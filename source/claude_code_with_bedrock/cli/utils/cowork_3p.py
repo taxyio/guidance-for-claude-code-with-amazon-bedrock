@@ -11,6 +11,12 @@ from pathlib import Path
 from rich.console import Console
 
 from claude_code_with_bedrock.cli.utils.aws import get_stack_outputs
+from claude_code_with_bedrock.models import (
+    CLAUDE_MODELS,
+    MODEL_KEY_TO_TIER,
+    MODEL_TIER_PREFERENCES,
+    PROFILE_KEY_ALIASES,
+)
 
 # Placeholder for the user's home directory in macOS MDM path values. Claude
 # Desktop on macOS does NOT expand "~" (or env vars) in MDM string values, and
@@ -21,9 +27,9 @@ from claude_code_with_bedrock.cli.utils.aws import get_stack_outputs
 # paths use the native %USERPROFILE% env var instead.
 CCWB_HOME_PLACEHOLDER = "__CCWB_HOME__"
 
-# CoWork 3P model aliases — defined by Anthropic's Claude Desktop client.
-# These may differ from the model IDs used by Claude Code (ANTHROPIC_MODEL env var).
-# The ccwb cowork generate --models flag allows admins to override if needed.
+# CoWork 3P tier aliases resolved by Claude Desktop itself. Fallback only — the
+# IDs Desktop picks may not exist in the deployment's region, so
+# derive_model_aliases() emits explicit CRIS IDs from the profile when it can.
 COWORK_DEFAULT_ALIASES = ["opus", "sonnet", "haiku"]
 
 # Mapping from tier alias to anthropicFamilyTier value used by Claude Desktop
@@ -36,16 +42,50 @@ FAMILY_TIER_MAP = {
 }
 
 
-def derive_model_aliases() -> list[str]:
-    """Return the default CoWork 3P model aliases.
+# How many models per tier (newest first) to offer in the Claude Desktop picker.
+COWORK_MODELS_PER_TIER = 3
 
-    Returns the standard alias list. Admins can override via the --models CLI flag.
+# Picker order. The first entry overall is Claude Desktop's default model.
+COWORK_TIER_ORDER = ("sonnet", "opus", "haiku", "fable")
 
-    Note: CoWork model aliases (opus, sonnet, haiku) are resolved by Claude Desktop
-    internally and may differ from the CRIS model IDs configured for Claude Code via
-    ANTHROPIC_MODEL.
+
+def derive_model_aliases(profile=None) -> list[str]:
+    """Return the CoWork 3P model list for a profile.
+
+    Builds explicit CRIS model IDs from the profile's ``cross_region_profile``
+    (e.g. ``eu.anthropic.claude-sonnet-5``) — the same IDs Claude Code uses —
+    with up to COWORK_MODELS_PER_TIER models per tier, newest first. The
+    profile's ``selected_model`` goes first so it is Claude Desktop's default.
+
+    Bare tier aliases ("opus", "sonnet", "haiku") are left to Claude Desktop to
+    resolve, which can yield IDs that don't exist in the profile's region (e.g.
+    a ``us.`` ID for an eu-central-1 deployment), so they are only the fallback
+    when no profile or no catalog match is available. Admins can still override
+    via the --models CLI flag.
     """
-    return list(COWORK_DEFAULT_ALIASES)
+    prefix = getattr(profile, "cross_region_profile", None)
+    if not prefix:
+        return list(COWORK_DEFAULT_ALIASES)
+    prefix = PROFILE_KEY_ALIASES.get(prefix, prefix)
+
+    model_ids: list[str] = []
+    for tier in COWORK_TIER_ORDER:
+        tier_ids = [
+            CLAUDE_MODELS[key]["profiles"][prefix]["model_id"]
+            for key in MODEL_TIER_PREFERENCES.get(tier, [])
+            # Skip cross-tier fallbacks (e.g. Sonnet listed under "haiku") so
+            # each model appears once, tagged with its own tier.
+            if MODEL_KEY_TO_TIER.get(key) == tier and prefix in CLAUDE_MODELS.get(key, {}).get("profiles", {})
+        ]
+        model_ids.extend(tier_ids[:COWORK_MODELS_PER_TIER])
+
+    if not model_ids:
+        return list(COWORK_DEFAULT_ALIASES)
+
+    selected = getattr(profile, "selected_model", None)
+    if selected:
+        model_ids = [selected] + [m for m in model_ids if m != selected]
+    return model_ids
 
 
 def build_inference_models(model_aliases: list[str]) -> list[dict[str, str | bool]]:
