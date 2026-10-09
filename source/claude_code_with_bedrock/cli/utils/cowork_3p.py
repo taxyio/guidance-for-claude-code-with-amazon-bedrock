@@ -389,7 +389,7 @@ def add_websearch_mcp_config(mdm_config: dict, profile, console: Console) -> Non
     No-op unless ``web_search_enabled``. Resolves the gateway endpoint at
     generation time (never a stale stored value beyond the profile cache) and
     emits a **remote MCP** ``managedMcpServers`` entry authenticated with a
-    ``headersHelper`` script: ``{name, url, headersHelper, headersHelperTtlSec}``.
+    ``headersHelper`` script: ``{name, transport, url, headersHelper, headersHelperTtlSec}``.
 
     Claude Desktop treats this as a generic remote MCP server and speaks standard
     MCP JSON-RPC that the AgentCore Gateway understands. The gateway's
@@ -466,6 +466,7 @@ def add_websearch_mcp_config(mdm_config: dict, profile, console: Console) -> Non
         headers_helper = WEBSEARCH_HEADERS_HELPER_PLACEHOLDER
     entry = {
         "name": WEBSEARCH_MCP_SERVER_NAME,
+        "transport": "http",  # required by Claude Desktop for non-built-in entries from 2026-10-07
         "url": url,
         "headersHelper": headers_helper,
         "headersHelperTtlSec": WEBSEARCH_HEADERS_TTL_SEC,
