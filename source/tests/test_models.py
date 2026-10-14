@@ -103,7 +103,8 @@ class TestModelConfiguration:
         """Test getting available profiles for each model."""
         # Test valid models
         fable_5_profiles = get_available_profiles_for_model("fable-5")
-        assert set(fable_5_profiles) == {"us", "eu", "global"}
+        # Fable 5 has no EU CRIS profile on Bedrock (only global/us).
+        assert set(fable_5_profiles) == {"us", "global"}
 
         opus_4_8_profiles = get_available_profiles_for_model("opus-4-8")
         assert set(opus_4_8_profiles) == {"us", "eu", "global"}
@@ -143,7 +144,8 @@ class TestModelConfiguration:
         # Test Fable profiles
         assert get_model_id_for_profile("fable-5", "us") == "us.anthropic.claude-fable-5"
         assert get_model_id_for_profile("fable-5", "global") == "global.anthropic.claude-fable-5"
-        assert get_model_id_for_profile("fable-5", "eu") == "eu.anthropic.claude-fable-5"
+        with pytest.raises(ValueError):
+            get_model_id_for_profile("fable-5", "eu")  # no EU CRIS profile exists
 
         # Test US profiles
         assert get_model_id_for_profile("opus-4-6", "us") == "us.anthropic.claude-opus-4-6-v1"
@@ -232,7 +234,7 @@ class TestModelConfiguration:
         # Test specific display names
         assert display_names["global.anthropic.claude-fable-5"] == "Claude Fable 5 (GLOBAL)"
         assert display_names["us.anthropic.claude-fable-5"] == "Claude Fable 5"
-        assert display_names["eu.anthropic.claude-fable-5"] == "Claude Fable 5 (EU)"
+        assert "eu.anthropic.claude-fable-5" not in display_names
         assert display_names["global.anthropic.claude-opus-4-6-v1"] == "Claude Opus 4.6 (GLOBAL)"
         assert display_names["us.anthropic.claude-opus-4-6-v1"] == "Claude Opus 4.6"
         assert display_names["us.anthropic.claude-opus-4-1-20250805-v1:0"] == "Claude Opus 4.1"
@@ -518,7 +520,7 @@ class TestResolveModelForTier:
     def test_get_claude_code_alias_fable(self):
         """Fable CRIS model IDs resolve to 'fable' alias."""
         assert get_claude_code_alias("us.anthropic.claude-fable-5") == "fable"
-        assert get_claude_code_alias("eu.anthropic.claude-fable-5") == "fable"
+        assert get_claude_code_alias("global.anthropic.claude-fable-5") == "fable"
 
     def test_get_claude_code_alias_unknown(self):
         """Unknown model IDs return None."""
@@ -528,7 +530,11 @@ class TestResolveModelForTier:
         """Fable tier resolves to correct CRIS model IDs."""
         from claude_code_with_bedrock.models import resolve_model_for_tier
 
-        assert resolve_model_for_tier("fable", "eu") == "eu.anthropic.claude-fable-5"
+        # No EU Fable profile exists: EU resolves to the best EU-resident model
+        # instead, never to a non-existent eu.*fable* ID or a global/us one.
+        eu_fable = resolve_model_for_tier("fable", "eu")
+        assert eu_fable.startswith("eu.")
+        assert "fable" not in eu_fable
         assert resolve_model_for_tier("fable", "us") == "us.anthropic.claude-fable-5"
         assert resolve_model_for_tier("fable", "global") == "global.anthropic.claude-fable-5"
 

@@ -166,6 +166,13 @@ class TestDeriveModelAliases:
         assert all(m.startswith("eu.") for m in models)
         assert not set(models) & set(COWORK_DEFAULT_ALIASES)
 
+    def test_eu_profile_omits_fable_without_eu_cris(self):
+        """Regression: eu.anthropic.claude-fable-5 does not exist on Bedrock, yet it
+        was offered in Claude Desktop's picker for EU deployments (and failed)."""
+        models = derive_model_aliases(self._profile("eu", "eu.anthropic.claude-sonnet-5"))
+        assert "eu.anthropic.claude-fable-5" not in models
+        assert not any("fable" in m for m in models)  # no global/us fallback either (data residency)
+
     def test_legacy_europe_key_resolves_to_eu(self):
         assert derive_model_aliases(self._profile("europe")) == derive_model_aliases(self._profile("eu"))
 
