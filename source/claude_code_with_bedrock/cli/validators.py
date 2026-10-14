@@ -83,6 +83,19 @@ def validate_profile_for_packaging(profile) -> list[ValidationError]:
             )
         )
 
+    # Side-by-side claude.ai + Bedrock relies on CLAUDE_CONFIG_DIR isolation.
+    # managed-settings.json is read by EVERY Claude Code session regardless of
+    # CLAUDE_CONFIG_DIR, so the Bedrock env would also hijack plain `claude`.
+    if getattr(profile, "claude_code_coexistence", False) and getattr(profile, "settings_target", "user") == "managed":
+        errors.append(
+            ValidationError(
+                "claude_code_coexistence",
+                "Side-by-side claude.ai + Bedrock mode requires settings_target='user'. "
+                "Managed settings apply to every Claude Code session and would force plain "
+                "'claude' onto Bedrock. Re-run 'ccwb init' and choose user scope, or disable coexistence.",
+            )
+        )
+
     # Quota enforcement requires quota API endpoint
     if getattr(profile, "quota_enforcement_mode", "off") != "off":
         if not getattr(profile, "quota_api_endpoint", None):
