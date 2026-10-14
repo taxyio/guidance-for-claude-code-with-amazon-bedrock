@@ -19,6 +19,15 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from claude_code_with_bedrock.cli.utils.aws import get_stack_outputs
+from claude_code_with_bedrock.cli.utils.coexistence import (
+    bash_closing_block,
+    bash_launcher_block,
+    bash_migration_block,
+    claude_dir_name,
+    coexistence_enabled,
+    windows_launcher_block,
+    windows_migration_block,
+)
 from claude_code_with_bedrock.cli.utils.display import display_configuration_info
 from claude_code_with_bedrock.cli.utils.helpers import get_codebuild_region
 from claude_code_with_bedrock.cli.validators import validate_profile_for_packaging
@@ -2906,6 +2915,12 @@ RUN pyinstaller \
             self.line("  <info>Using existing installer scripts (install.sh, ccwb-install.ps1)</info>")
             return installer_path
 
+        # Side-by-side mode: Bedrock settings go to ~/.claude-bedrock (used via the
+        # claude-bedrock launcher) so plain `claude` keeps the claude.ai login.
+        coexist = coexistence_enabled(profile)
+        claude_dir = claude_dir_name(profile)
+        coexist_migration_block = bash_migration_block() if coexist else ""
+
         # IDC zero-binary mode: no credential-process binary, auth via aws sso login
         _is_idc = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", "oidc")) == "idc"
         _has_quota = bool(getattr(profile, "quota_api_endpoint", None))
@@ -2917,6 +2932,16 @@ RUN pyinstaller \
             )
             aws_region = getattr(profile, "aws_region", "us-east-1") or "us-east-1"
             sso_region = getattr(profile, "sso_region", aws_region) or aws_region
+            if coexist:
+                # No credential-process: the launcher only selects the Bedrock
+                # config dir; SSO sign-in stays `aws sso login`.
+                zero_binary_launcher_block = bash_launcher_block(login_profile=False, default_profile="ClaudeCode")
+                zero_binary_start_hint = (
+                    "Start Claude Code on Bedrock with: ${LAUNCHER_ON_PATH:-$LAUNCHER} ('claude' stays on claude.ai)."
+                )
+            else:
+                zero_binary_launcher_block = ""
+                zero_binary_start_hint = "Claude Code will use the ClaudeCode profile automatically."
             idc_content = f"""#!/bin/bash
 # Claude Code with Bedrock — IAM Identity Center Installer
 # Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -2992,15 +3017,15 @@ echo "✓ AWS profile 'ClaudeCode' configured"
 
 # Install Claude Code settings
 if [ -d "claude-settings" ] && [ -f "claude-settings/settings.json" ]; then
-    mkdir -p "$ACTUAL_HOME/.claude"
-    if [ -f "$ACTUAL_HOME/.claude/settings.json" ]; then
-        cp "$ACTUAL_HOME/.claude/settings.json" "$ACTUAL_HOME/.claude/settings.json.backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$ACTUAL_HOME/{claude_dir}"
+    if [ -f "$ACTUAL_HOME/{claude_dir}/settings.json" ]; then
+        cp "$ACTUAL_HOME/{claude_dir}/settings.json" "$ACTUAL_HOME/{claude_dir}/settings.json.backup-$(date +%Y%m%d-%H%M%S)"
     fi
-    cp "claude-settings/settings.json" "$ACTUAL_HOME/.claude/settings.json"
-    if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/.claude/settings.json"; fi
+    cp "claude-settings/settings.json" "$ACTUAL_HOME/{claude_dir}/settings.json"
+    if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}/settings.json"; fi
     echo "✓ Claude Code settings installed"
 fi
-
+{coexist_migration_block}{zero_binary_launcher_block}
 echo
 echo "======================================"
 echo "Installation complete!"
@@ -3014,7 +3039,7 @@ echo "Then verify:"
 echo
 echo "  aws sts get-caller-identity --profile ClaudeCode"
 echo
-echo "Claude Code will use the ClaudeCode profile automatically."
+echo "{zero_binary_start_hint}"
 echo "Re-run 'aws sso login --profile ClaudeCode' when your session expires (every 8 hours)."
 """
             with open(installer_path, "w", encoding="utf-8") as f:
@@ -3215,8 +3240,8 @@ fi
 if [ -d "claude-settings" ]; then
     echo
     echo "Installing Claude Code settings..."
-    mkdir -p "$ACTUAL_HOME/.claude"
-    if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/.claude"; fi
+    mkdir -p "$ACTUAL_HOME/{claude_dir}"
+    if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}"; fi
 
     # Install managed-settings.json (OS-level enforcement) if present
     if [ -f "claude-settings/managed-settings.json" ]; then
@@ -3255,19 +3280,19 @@ if [ -d "claude-settings" ]; then
     # Copy user-scope settings.json if present
     if [ -f "claude-settings/settings.json" ]; then
         # Check if settings file already exists
-        if [ -f "$ACTUAL_HOME/.claude/settings.json" ]; then
+        if [ -f "$ACTUAL_HOME/{claude_dir}/settings.json" ]; then
             echo "Existing Claude Code settings found"
             # Backup existing settings
             BACKUP_NAME="settings.json.backup-$(date +%Y%m%d-%H%M%S)"
-            cp "$ACTUAL_HOME/.claude/settings.json" "$ACTUAL_HOME/.claude/$BACKUP_NAME"
-            if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/.claude/$BACKUP_NAME"; fi
-            echo "  Backed up to: $ACTUAL_HOME/.claude/$BACKUP_NAME"
+            cp "$ACTUAL_HOME/{claude_dir}/settings.json" "$ACTUAL_HOME/{claude_dir}/$BACKUP_NAME"
+            if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}/$BACKUP_NAME"; fi
+            echo "  Backed up to: $ACTUAL_HOME/{claude_dir}/$BACKUP_NAME"
 
             # Merge new settings into existing (preserves user customizations)
             $PYTHON -c "
 import json, sys
 try:
-    with open('$ACTUAL_HOME/.claude/$BACKUP_NAME') as f:
+    with open('$ACTUAL_HOME/{claude_dir}/$BACKUP_NAME') as f:
         existing = json.load(f)
 except (json.JSONDecodeError, FileNotFoundError):
     existing = {{}}
@@ -3286,12 +3311,12 @@ def deep_merge(base, override):
     return result
 
 merged = deep_merge(existing, incoming)
-with open('$ACTUAL_HOME/.claude/settings.json', 'w') as f:
+with open('$ACTUAL_HOME/{claude_dir}/settings.json', 'w') as f:
     json.dump(merged, f, indent=2)
 " 2>/dev/null
 
             if [ $? -eq 0 ]; then
-                echo "OK Claude Code settings merged: $ACTUAL_HOME/.claude/settings.json"
+                echo "OK Claude Code settings merged: $ACTUAL_HOME/{claude_dir}/settings.json"
                 echo "   (existing user settings preserved, new Bedrock config added)"
             else
                 # Fallback: overwrite if merge fails
@@ -3305,34 +3330,34 @@ with open('$ACTUAL_HOME/.claude/settings.json', 'w') as f:
             fi
         fi
 
-        if [ "$SKIP_SETTINGS" != "true" ] && [ ! -f "$ACTUAL_HOME/.claude/settings.json" ]; then
+        if [ "$SKIP_SETTINGS" != "true" ] && [ ! -f "$ACTUAL_HOME/{claude_dir}/settings.json" ]; then
             # No existing settings — just write directly
             sed -e "s|__OTEL_HELPER_PATH__|$ACTUAL_HOME/claude-code-with-bedrock/otel-helper|g" \
                 -e "s|__CREDENTIAL_PROCESS_PATH__|$ACTUAL_HOME/claude-code-with-bedrock/credential-process|g" \
-                "claude-settings/settings.json" > "$ACTUAL_HOME/.claude/settings.json"
-            echo "OK Claude Code settings configured: $ACTUAL_HOME/.claude/settings.json"
+                "claude-settings/settings.json" > "$ACTUAL_HOME/{claude_dir}/settings.json"
+            echo "OK Claude Code settings configured: $ACTUAL_HOME/{claude_dir}/settings.json"
         fi
 
         # Replace placeholders in the final settings file
-        if [ -f "$ACTUAL_HOME/.claude/settings.json" ] && [ "$SKIP_SETTINGS" != "true" ]; then
+        if [ -f "$ACTUAL_HOME/{claude_dir}/settings.json" ] && [ "$SKIP_SETTINGS" != "true" ]; then
             sed -i.tmp -e "s|__OTEL_HELPER_PATH__|$ACTUAL_HOME/claude-code-with-bedrock/otel-helper|g" \
                        -e "s|__CREDENTIAL_PROCESS_PATH__|$ACTUAL_HOME/claude-code-with-bedrock/credential-process|g" \
-                       "$ACTUAL_HOME/.claude/settings.json"
-            rm -f "$ACTUAL_HOME/.claude/settings.json.tmp"
+                       "$ACTUAL_HOME/{claude_dir}/settings.json"
+            rm -f "$ACTUAL_HOME/{claude_dir}/settings.json.tmp"
 
             # Verify placeholders were replaced
-            if grep -q '__CREDENTIAL_PROCESS_PATH__\\|__OTEL_HELPER_PATH__' "$ACTUAL_HOME/.claude/settings.json" 2>/dev/null; then
+            if grep -q '__CREDENTIAL_PROCESS_PATH__\\|__OTEL_HELPER_PATH__' "$ACTUAL_HOME/{claude_dir}/settings.json" 2>/dev/null; then
                 echo "WARNING: Some path placeholders were not replaced in settings.json"
-                echo "         You may need to edit the file manually: $ACTUAL_HOME/.claude/settings.json"
+                echo "         You may need to edit the file manually: $ACTUAL_HOME/{claude_dir}/settings.json"
             fi
         fi
 
-        if [ -n "$SUDO_USER" ] && [ -f "$ACTUAL_HOME/.claude/settings.json" ]; then
-            chown "$ACTUAL_USER" "$ACTUAL_HOME/.claude/settings.json"
+        if [ -n "$SUDO_USER" ] && [ -f "$ACTUAL_HOME/{claude_dir}/settings.json" ]; then
+            chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}/settings.json"
         fi
     fi
 fi
-
+{coexist_migration_block}
 # Copy OTEL helper executable if present
 if [ -f "$OTEL_BINARY" ]; then
     echo
@@ -3463,10 +3488,10 @@ if [ -f "$ACTUAL_HOME/claude-code-with-bedrock/credential-process" ]; then
 else
     echo "  FAIL credential-process not found at: $ACTUAL_HOME/claude-code-with-bedrock/credential-process"
 fi
-if [ -f "$ACTUAL_HOME/.claude/settings.json" ]; then
-    echo "  OK settings.json: $ACTUAL_HOME/.claude/settings.json"
+if [ -f "$ACTUAL_HOME/{claude_dir}/settings.json" ]; then
+    echo "  OK settings.json: $ACTUAL_HOME/{claude_dir}/settings.json"
 else
-    echo "  WARN settings.json not found at: $ACTUAL_HOME/.claude/settings.json"
+    echo "  WARN settings.json not found at: $ACTUAL_HOME/{claude_dir}/settings.json"
 fi
 """
 
@@ -3489,7 +3514,12 @@ fi
         # Revisit removing the launcher once #67529 lands and start-up fallback is
         # confirmed; track via LOCAL_TESTING.md's "why a launcher" note.
         _is_idc = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", None)) == "idc"
-        if _is_idc:
+        if coexist:
+            # Side-by-side: every auth mode gets the launcher (it is how users
+            # reach Bedrock); IDC keeps the --login pre-flight described above.
+            installer_content += bash_launcher_block(login_profile=_is_idc)
+            installer_content += bash_closing_block()
+        elif _is_idc:
             installer_content += """
 # Generate a 'claude-bedrock' launcher wrapper.
 # It signs in (a no-op when the session is still valid) so the verification URL
@@ -3586,6 +3616,12 @@ echo
         # When monitoring is off, the helper isn't referenced, so their absence is
         # harmless and the copy stays best-effort.
         _otel_missing_is_fatal = bool(profile.monitoring_enabled)
+
+        # Side-by-side mode (see cli/utils/coexistence.py): settings go to
+        # %USERPROFILE%\.claude-bedrock and claude-bedrock.cmd selects that dir.
+        coexist = coexistence_enabled(profile)
+        claude_dir = claude_dir_name(profile)
+        win_coexist_migration_block = windows_migration_block() if coexist else ""
 
         # Web search headersHelper (Windows): when web search is enabled (OIDC),
         # write %USERPROFILE%\claude-code-with-bedrock\websearch-headers.cmd, a
@@ -3751,7 +3787,7 @@ if exist "cowork-credential-helper.cmd" (
 REM Copy Claude Code settings if they exist
 if exist "claude-settings" (
     echo Copying Claude Code telemetry settings...
-    if not exist "%USERPROFILE%\\.claude" mkdir "%USERPROFILE%\\.claude"
+    if not exist "%USERPROFILE%\\{claude_dir}" mkdir "%USERPROFILE%\\{claude_dir}"
 
     REM Install managed-settings.json (organization-wide enforcement) if present
     if exist "claude-settings\\managed-settings.json" (
@@ -3779,14 +3815,16 @@ if exist "claude-settings" (
     REM Copy user-scope settings.json if present (with merge support)
     if exist "claude-settings\\settings.json" (
         set WRITE_SETTINGS=false
-        if exist "%USERPROFILE%\\.claude\\settings.json" (
+        if exist "%USERPROFILE%\\{claude_dir}\\settings.json" (
             echo Existing Claude Code settings found - merging...
 
             REM Merge new settings into existing. Top-level keys from the new
             REM settings win, but the 'env' object is DEEP-merged so custom env
             REM vars the user added survive. $ErrorActionPreference=Stop plus
             REM the catch/exit 1 makes any failure visible via !errorlevel!.
-            powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; try {{ $otelPath = ($env:USERPROFILE + '\\claude-code-with-bedrock\\otel-helper.cmd').Replace('\\','\\\\'); $credPath = $env:USERPROFILE + '\\claude-code-with-bedrock\\credential-process.exe' -replace '\\\\', '/'; $settingsPath = Join-Path $env:USERPROFILE '.claude\\settings.json'; $existing = Get-Content $settingsPath -Raw | ConvertFrom-Json; $incoming = (Get-Content 'claude-settings\\settings.json' -Raw) -replace '__OTEL_HELPER_PATH__', $otelPath -replace '__CREDENTIAL_PROCESS_PATH__', $credPath | ConvertFrom-Json; foreach ($prop in $incoming.PSObject.Properties) {{ if ($prop.Name -eq 'env' -and $existing.PSObject.Properties['env']) {{ foreach ($envProp in $prop.Value.PSObject.Properties) {{ $existing.env | Add-Member -MemberType NoteProperty -Name $envProp.Name -Value $envProp.Value -Force }} }} else {{ $existing | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force }} }}; $existing | ConvertTo-Json -Depth 10 | Set-Content $settingsPath }} catch {{ Write-Error $_; exit 1 }}"
+            powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; try {{ $otelPath = ($env:USERPROFILE + '\\claude-code-with-bedrock\\otel-helper.cmd').Replace('\\','\\\\'); $credPath = $env:USERPROFILE + '\\claude-code-with-bedrock\\credential-process.exe' -replace '\\\\', '/'; $settingsPath = Join-Path $env:USERPROFILE '{
+            claude_dir
+        }\\settings.json'; $existing = Get-Content $settingsPath -Raw | ConvertFrom-Json; $incoming = (Get-Content 'claude-settings\\settings.json' -Raw) -replace '__OTEL_HELPER_PATH__', $otelPath -replace '__CREDENTIAL_PROCESS_PATH__', $credPath | ConvertFrom-Json; foreach ($prop in $incoming.PSObject.Properties) {{ if ($prop.Name -eq 'env' -and $existing.PSObject.Properties['env']) {{ foreach ($envProp in $prop.Value.PSObject.Properties) {{ $existing.env | Add-Member -MemberType NoteProperty -Name $envProp.Name -Value $envProp.Value -Force }} }} else {{ $existing | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force }} }}; $existing | ConvertTo-Json -Depth 10 | Set-Content $settingsPath }} catch {{ Write-Error $_; exit 1 }}"
             if !errorlevel! equ 0 (
                 echo OK Claude Code settings merged [user settings preserved]
             ) else (
@@ -3803,12 +3841,14 @@ if exist "claude-settings" (
 
         if "!WRITE_SETTINGS!"=="true" (
             REM No existing settings [or user chose overwrite] - write directly
-            powershell -Command "$otelPath = ($env:USERPROFILE + '\\claude-code-with-bedrock\\otel-helper.cmd').Replace('\\','\\\\'); $credPath = $env:USERPROFILE + '\\claude-code-with-bedrock\\credential-process.exe' -replace '\\\\', '/'; (Get-Content 'claude-settings\\settings.json') -replace '__OTEL_HELPER_PATH__', $otelPath -replace '__CREDENTIAL_PROCESS_PATH__', $credPath | Set-Content (Join-Path $env:USERPROFILE '.claude\\settings.json')"
+            powershell -Command "$otelPath = ($env:USERPROFILE + '\\claude-code-with-bedrock\\otel-helper.cmd').Replace('\\','\\\\'); $credPath = $env:USERPROFILE + '\\claude-code-with-bedrock\\credential-process.exe' -replace '\\\\', '/'; (Get-Content 'claude-settings\\settings.json') -replace '__OTEL_HELPER_PATH__', $otelPath -replace '__CREDENTIAL_PROCESS_PATH__', $credPath | Set-Content (Join-Path $env:USERPROFILE '{
+            claude_dir
+        }\\settings.json')"
             echo OK Claude Code settings configured
         )
     )
 )
-
+{win_coexist_migration_block}
 REM Configure AWS profiles
 echo.
 echo Configuring AWS profiles...
@@ -3872,8 +3912,11 @@ for /f %%p in ('powershell -NoProfile -Command "$c=Get-Content config.json|Conve
 """
 
         # IDC auth needs a launcher wrapper; OIDC auth handles sign-in transparently.
+        # Side-by-side mode needs it for every auth mode (it selects the Bedrock config dir).
         _is_idc = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", None)) == "idc"
-        if _is_idc:
+        if coexist:
+            installer_content += windows_launcher_block(login_profile=_is_idc)
+        elif _is_idc:
             installer_content += """
 REM Generate a 'claude-bedrock.cmd' launcher.
 REM It signs in first (no-op if the session is still valid) so the verification
@@ -4122,6 +4165,27 @@ Available metrics include:
 - Activity trends
 """
             readme_content += analytics_section
+
+        if coexistence_enabled(profile):
+            readme_content += """
+
+## Two Ways to Run Claude Code
+
+This package installs Amazon Bedrock **next to** your existing Claude Code:
+
+| Command | Uses | Settings |
+|---|---|---|
+| `claude` | Your claude.ai subscription (connectors such as Gmail, Slack, Atlassian) | `~/.claude/` |
+| `claude-bedrock` | Amazon Bedrock (company account, telemetry and quota) | `~/.claude-bedrock/` |
+
+- `skills/`, `agents/` and `commands/` are shared between both; `~/.claude-bedrock/CLAUDE.md`
+  imports `~/.claude/CLAUDE.md`.
+- MCP servers, history and plugins are separate per command.
+- IDE extensions: set `CLAUDE_CONFIG_DIR` to `~/.claude-bedrock` in the extension's
+  environment to use Bedrock there.
+- If `claude-bedrock` is not found, add `~/claude-code-with-bedrock` (Windows:
+  `%USERPROFILE%\\claude-code-with-bedrock`) to your PATH.
+"""
 
         readme_content += "\n"
 

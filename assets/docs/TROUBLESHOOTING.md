@@ -20,6 +20,8 @@ If checks fail, the command prints a pre-filled GitHub issue URL — just click 
 | `ccwb package` reports "no binaries built" | Go not installed or wrong version | Install Go 1.24+ and re-run |
 | Windows Defender blocks binaries | Unsigned Go executables trigger heuristic detection | Add install directory to exclusions (see [#649](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/issues/649)) |
 | Region mismatch deployment failure | `aws_region` differs from Cognito/IdP region | Re-run `ccwb init` and verify region selection |
+| claude.ai connectors (Gmail, Slack, Atlassian, ...) missing in Claude Code | Bedrock settings in `~/.claude/settings.json` switch every `claude` session to Bedrock; claude.ai connectors need a claude.ai login | Enable side-by-side mode (`ccwb init`, user-scope settings), re-package and re-install. Use `claude` for claude.ai and `claude-bedrock` for Bedrock. See [Side-by-side claude.ai and Bedrock](DEPLOYMENT.md#side-by-side-claudeai-and-bedrock-optional) |
+| Plain `claude` still uses Bedrock in side-by-side mode | `CLAUDE_CODE_USE_BEDROCK` or `CLAUDE_CONFIG_DIR` exported in your shell profile, or left in `~/.claude/settings.json` | `ccwb doctor` (coexistence check) points at the source. Remove it and use `claude-bedrock` |
 
 ## Debug Logging
 

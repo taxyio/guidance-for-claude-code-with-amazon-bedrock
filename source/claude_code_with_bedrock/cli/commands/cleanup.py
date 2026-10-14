@@ -6,6 +6,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from cleo.commands.command import Command
@@ -13,6 +14,8 @@ from cleo.helpers import option
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
+
+from claude_code_with_bedrock.cli.utils.coexistence import BEDROCK_CONFIG_DIR_NAME, LAUNCHER_NAME
 
 
 class CleanupCommand(Command):
@@ -72,6 +75,18 @@ class CleanupCommand(Command):
         claude_settings = Path.home() / ".claude" / "settings.json"
         if claude_settings.exists():
             items_to_remove.append(("File", str(claude_settings), "Claude Code telemetry settings"))
+
+        # Side-by-side mode: Bedrock settings + the launcher copy on PATH. The rest of
+        # ~/.claude-bedrock (history, sessions) is the user's and is left in place.
+        bedrock_settings = Path.home() / BEDROCK_CONFIG_DIR_NAME / "settings.json"
+        if bedrock_settings.exists():
+            items_to_remove.append(("File", str(bedrock_settings), "Claude Code Bedrock settings (side-by-side)"))
+        launcher_names = (f"{LAUNCHER_NAME}.cmd",) if sys.platform == "win32" else (LAUNCHER_NAME,)
+        path_launchers = [
+            p for p in (Path.home() / ".local" / "bin" / n for n in launcher_names) if p.exists() or p.is_symlink()
+        ]
+        for p in path_launchers:
+            items_to_remove.append(("File", str(p), "claude-bedrock launcher on PATH"))
 
         if not items_to_remove:
             console.print("[green]No authentication components found to clean up.[/green]")
@@ -158,6 +173,14 @@ class CleanupCommand(Command):
                     console.print(f"✓ Removed empty directory {claude_dir}")
             except Exception as e:
                 console.print(f"[red]✗ Failed to remove Claude settings: {e}[/red]")
+
+        for p in [bedrock_settings, *path_launchers]:
+            if p.exists() or p.is_symlink():
+                try:
+                    p.unlink()
+                    console.print(f"✓ Removed {p}")
+                except OSError as e:
+                    console.print(f"[red]✗ Failed to remove {p}: {e}[/red]")
 
         # Remove the ccwb claude wrapper block from shell rc files and from the
         # PowerShell profile, if any installer ever appended one. Safe no-op

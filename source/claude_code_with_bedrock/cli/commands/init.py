@@ -1714,6 +1714,25 @@ class InitCommand(Command):
         else:
             console.print("[green]✓[/green] Settings will be deployed to user-scope path")
 
+        # Side-by-side claude.ai + Bedrock (user scope only — managed-settings.json
+        # applies to every Claude Code session and would force `claude` onto Bedrock).
+        if config["settings_target"] == "user":
+            console.print("\n[bold]Side-by-side Claude Code[/bold]")
+            console.print("Let users keep their claude.ai Claude Code (with its connectors) next to Bedrock:")
+            console.print("  • [cyan]claude[/cyan]         → claude.ai subscription (unchanged)")
+            console.print("  • [cyan]claude-bedrock[/cyan] → Amazon Bedrock (settings in ~/.claude-bedrock/)")
+            coexist = questionary.confirm(
+                "Install Bedrock side-by-side with claude.ai Claude Code?",
+                default=bool(config.get("claude_code_coexistence", False)),
+            ).ask()
+            config["claude_code_coexistence"] = bool(coexist)
+        else:
+            if config.get("claude_code_coexistence"):
+                console.print(
+                    "[yellow]![/yellow] Side-by-side claude.ai + Bedrock mode disabled: it requires user-scope settings"
+                )
+            config["claude_code_coexistence"] = False
+
         # Package distribution support
         console.print("\n[bold]Package Distribution[/bold]")
         console.print("Choose how to distribute Claude Code packages to end users:")
@@ -3031,6 +3050,11 @@ class InitCommand(Command):
             if (self._io and self.option("managed"))
             else config_data.get("settings_target", "user"),
             "lock_default_model": config_data.get("lock_default_model", False),
+            "claude_code_coexistence": (
+                bool(config_data.get("claude_code_coexistence", False))
+                and not (self._io and self.option("managed"))
+                and config_data.get("settings_target", "user") == "user"
+            ),
             "tags": config_data.get("tags", {}),
             "redirect_port": config_data.get("redirect_port"),
             "extra_files": config_data.get("extra_files", []),
@@ -3372,6 +3396,10 @@ class InitCommand(Command):
             # Add lock_default_model if present
             if hasattr(profile, "lock_default_model"):
                 existing_config["lock_default_model"] = profile.lock_default_model
+
+            # Settings target + side-by-side mode (must mirror _save_configuration)
+            existing_config["settings_target"] = getattr(profile, "settings_target", "user")
+            existing_config["claude_code_coexistence"] = getattr(profile, "claude_code_coexistence", False)
 
             # Add cross-region profile if present
             if hasattr(profile, "cross_region_profile") and profile.cross_region_profile:

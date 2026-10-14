@@ -165,6 +165,15 @@ class Profile:
     # "managed" = OS-level managed-settings.json (highest precedence, non-overridable)
     settings_target: str = "user"
 
+    # Side-by-side Claude Code (claude.ai + Bedrock). When True, the installer
+    # writes the Bedrock settings to ~/.claude-bedrock/ instead of ~/.claude/,
+    # removes previously installed Bedrock keys from ~/.claude/settings.json, and
+    # installs a `claude-bedrock` launcher that sets CLAUDE_CONFIG_DIR. Plain
+    # `claude` then keeps the user's claude.ai login (and its connectors).
+    # Requires settings_target == "user": managed-settings.json applies to every
+    # Claude Code session regardless of CLAUDE_CONFIG_DIR.
+    claude_code_coexistence: bool = False
+
     # Claude Cowork 3P MDM configuration
     cowork_3p_enabled: bool = True  # Generate CoWork 3P MDM configs during packaging
     cowork_3p_extra_keys: dict[str, str] = field(default_factory=dict)  # Custom MDM keys merged into CoWork 3P output

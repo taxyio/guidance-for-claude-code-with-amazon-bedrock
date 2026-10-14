@@ -21,6 +21,8 @@ from cleo.helpers import option
 from rich.console import Console
 from rich.table import Table
 
+from claude_code_with_bedrock.cli.utils.coexistence import BEDROCK_CONFIG_DIR_NAME, LAUNCHER_NAME
+
 
 class HealthCheck:
     """A single health check with name, runner, and result."""
@@ -89,6 +91,53 @@ def _run_binary_json(binary_path: Path, args: list, timeout: int = 10) -> dict |
     return None
 
 
+def _check_coexistence(home: Path, install_dir: Path, environ: dict | None = None) -> HealthCheck:
+    """Side-by-side mode: `claude` must stay on claude.ai, `claude-bedrock` on Bedrock.
+
+    Skipped unless ~/.claude-bedrock/settings.json exists. Fails when Bedrock
+    leaks into plain `claude` (via ~/.claude/settings.json or the shell env),
+    warns when the launcher is missing.
+    """
+    import os
+
+    check = HealthCheck("coexistence", "Side-by-side claude.ai + Bedrock")
+    if not (home / BEDROCK_CONFIG_DIR_NAME / "settings.json").exists():
+        check.status = "skipped"
+        check.message = "Side-by-side mode not installed"
+        return check
+
+    environ = os.environ if environ is None else environ
+    default_settings = home / ".claude" / "settings.json"
+    if default_settings.exists():
+        try:
+            env = json.loads(default_settings.read_text(encoding="utf-8")).get("env") or {}
+        except (ValueError, AttributeError):
+            env = {}
+        if isinstance(env, dict) and env.get("CLAUDE_CODE_USE_BEDROCK"):
+            check.fail(
+                "~/.claude/settings.json still sets CLAUDE_CODE_USE_BEDROCK — plain 'claude' uses Bedrock",
+                "Re-run the installer, or remove CLAUDE_CODE_USE_BEDROCK from ~/.claude/settings.json",
+            )
+            return check
+    if environ.get("CLAUDE_CODE_USE_BEDROCK"):
+        check.fail(
+            "CLAUDE_CODE_USE_BEDROCK is set in your shell — plain 'claude' uses Bedrock",
+            "Remove 'export CLAUDE_CODE_USE_BEDROCK' from your shell profile; use 'claude-bedrock' instead",
+        )
+        return check
+    if environ.get("CLAUDE_CONFIG_DIR"):
+        check.warn(
+            f"CLAUDE_CONFIG_DIR is set in your shell ({environ['CLAUDE_CONFIG_DIR']}) — plain 'claude' uses it",
+            "Unset CLAUDE_CONFIG_DIR; 'claude-bedrock' sets it for Bedrock sessions only",
+        )
+        return check
+    if not _find_binary(install_dir, LAUNCHER_NAME):
+        check.warn(f"Launcher '{LAUNCHER_NAME}' not found in {install_dir}", "Re-run the installer")
+        return check
+    check.pass_(f"'claude' → claude.ai, '{LAUNCHER_NAME}' → Bedrock (~/{BEDROCK_CONFIG_DIR_NAME})")
+    return check
+
+
 def run_doctor(home: Path = None, live: bool = False, profile: str = None) -> list:
     """Run all health checks and return list of HealthCheck results.
 
@@ -151,6 +200,7 @@ def run_doctor(home: Path = None, live: bool = False, profile: str = None) -> li
     # ─── Check 4: Claude Code settings.json ────────────────────────────────────
     check = HealthCheck("settings.json", "Claude Code settings configured")
     settings_paths = [
+        home / BEDROCK_CONFIG_DIR_NAME / "settings.json",  # side-by-side mode
         home / ".claude" / "settings.json",
         home / ".claude" / "managed-settings.json",
     ]
@@ -171,6 +221,9 @@ def run_doctor(home: Path = None, live: bool = False, profile: str = None) -> li
     else:
         check.fail("No settings.json or managed-settings.json in ~/.claude/", "Run the installer")
     checks.append(check)
+
+    # ─── Check 4b: side-by-side claude.ai + Bedrock ──────────────────────────
+    checks.append(_check_coexistence(home, install_dir))
 
     # ─── Check 5: credential-process --explain (resolved config) ──────────────
     check = HealthCheck("explain", "Resolved auth mode and configuration")

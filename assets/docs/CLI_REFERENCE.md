@@ -97,6 +97,7 @@ poetry run ccwb init [options]
   - Enforcement modes (alert vs block) for daily and monthly limits
   - Quota re-check interval (how often to verify quota with cached credentials)
 - Prompts for Windows build support via AWS CodeBuild (optional)
+- Prompts for side-by-side mode (user-scope settings only): `claude` stays on the user's claude.ai subscription and a `claude-bedrock` launcher runs Claude Code on Bedrock. See [Side-by-side claude.ai and Bedrock](DEPLOYMENT.md#side-by-side-claudeai-and-bedrock-optional)
 - Saves configuration to `.ccwb-config/config.json` in the project directory
 
 **Note:** This command only creates configuration. Use `deploy` to create AWS resources.
@@ -256,6 +257,7 @@ poetry run ccwb package [options]
 1. Cross-compiles native Go binaries for all selected platforms (with `--go`)
 2. Creates `config.json` with federation config read from the admin profile
 3. Creates `claude-settings/settings.json` with Bedrock model and OTel endpoint (or `managed-settings.json` if `--managed` was used during init)
+   - In side-by-side mode the installer writes it to `~/.claude-bedrock/settings.json` and creates the `claude-bedrock` launcher instead
 4. Creates installer scripts (`install.sh`, `install.bat`, `ccwb-install.ps1`)
 5. Outputs to `dist/{profile}/{timestamp}/`
 
@@ -1226,7 +1228,8 @@ poetry run ccwb doctor [options]
 | `credential-process` | Binary exists in install dir (.exe/.cmd/.ps1 on Windows) |
 | `config.json` | Present, valid JSON, lists profiles |
 | `aws-profile` | `~/.aws/config` references credential-process |
-| `settings.json` | Claude Code settings file with env/hooks |
+| `settings.json` | Claude Code settings file with env/hooks (`~/.claude-bedrock/` in side-by-side mode) |
+| `coexistence` | Side-by-side mode only: plain `claude` is not switched to Bedrock (no `CLAUDE_CODE_USE_BEDROCK` in `~/.claude/settings.json` or the shell, no exported `CLAUDE_CONFIG_DIR`) and the `claude-bedrock` launcher exists |
 | `explain` | Calls `credential-process --explain` — shows resolved auth mode, provider, quota |
 | `otel-helper` | Telemetry binary exists (only FAIL if monitoring configured) |
 | `otel-status` | Calls `otel-helper --status` — proxy running? headers cached? |

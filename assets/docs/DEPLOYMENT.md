@@ -178,6 +178,31 @@ This writes settings to the OS-level `managed-settings.json` path instead of use
 
 The installer will detect managed settings in the package and prompt for elevated privileges. For MDM-managed fleets (Jamf, Intune, Group Policy), see Anthropic's [MDM templates](https://github.com/anthropics/claude-code/tree/main/examples/mdm) for alternative delivery.
 
+### Side-by-side claude.ai and Bedrock (Optional)
+
+By default the installer writes the Bedrock settings to `~/.claude/settings.json`. Every `claude` session then runs on Bedrock, and users lose the claude.ai login they may already have, including claude.ai connectors such as Gmail, Slack and Atlassian.
+
+Side-by-side mode keeps both:
+
+| Command | Runs on | Config directory | Telemetry and quota |
+|---|---|---|---|
+| `claude` | User's claude.ai subscription | `~/.claude/` | No |
+| `claude-bedrock` | Amazon Bedrock | `~/.claude-bedrock/` | Yes |
+
+Enable it in `ccwb init` ("Install Bedrock side-by-side with claude.ai Claude Code?"), then run `ccwb package` and redistribute. The installer:
+
+- Writes the Bedrock settings to `~/.claude-bedrock/settings.json`.
+- Removes the Bedrock keys earlier installs left in `~/.claude/settings.json`. It saves a `settings.json.backup-*` copy first and only touches files the installer wrote, so user customizations stay.
+- Shares `skills/`, `agents/` and `commands/` with `~/.claude` (symlinks on macOS/Linux, directory junctions on Windows). It also creates `~/.claude-bedrock/CLAUDE.md`, which imports `~/.claude/CLAUDE.md`. MCP servers, plugins and history stay separate.
+- Installs the `claude-bedrock` launcher in `~/claude-code-with-bedrock/`, which sets `CLAUDE_CONFIG_DIR` before starting `claude`. The installer links it into `~/.local/bin` when that folder exists (macOS/Linux) or copies it there (Windows). That is where the native Claude Code installer puts `claude`.
+
+Notes:
+
+- **User-scope settings only.** Claude Code reads `managed-settings.json` for every session, whatever `CLAUDE_CONFIG_DIR` is set to. `ccwb init` disables this option when you choose managed settings, and `ccwb package` rejects profiles that combine the two.
+- **IDE extensions** use `~/.claude` unless you set `CLAUDE_CONFIG_DIR=~/.claude-bedrock` in the extension's environment.
+- **Licensing and data handling.** Sessions started with `claude` go to Anthropic under each user's claude.ai plan, not through your AWS account.
+- `ccwb doctor` reports when Bedrock still leaks into plain `claude`, for example through an exported `CLAUDE_CODE_USE_BEDROCK`.
+
 ## Phase 4: Testing Your Deployment
 
 Before distributing to users, thoroughly test the package to ensure everything works as expected. The CLI provides a comprehensive test command that simulates exactly what end users will experience:
