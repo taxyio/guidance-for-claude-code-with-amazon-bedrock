@@ -655,8 +655,8 @@ poetry run ccwb cowork generate --format mobileconfig
 poetry run ccwb cowork generate --format reg
 poetry run ccwb cowork generate --format json
 
-# Custom model aliases
-poetry run ccwb cowork generate --models opus,sonnet,haiku
+# Custom model list (full CRIS IDs)
+poetry run ccwb cowork generate --models eu.anthropic.claude-sonnet-5,eu.anthropic.claude-opus-5
 
 # Custom output directory
 poetry run ccwb cowork generate -o ./my-mdm-configs/
@@ -672,7 +672,7 @@ poetry run ccwb cowork generate --profile Production
 | `--profile` | Configuration profile to use | Active profile |
 | `--output`, `-o` | Output directory | `dist/cowork-3p/` |
 | `--format`, `-f` | Output format: `all`, `json`, `mobileconfig`, `reg` | `all` |
-| `--models`, `-m` | Comma-separated model aliases | Auto-detected from profile |
+| `--models`, `-m` | Comma-separated model IDs or aliases | CRIS IDs for the profile's region, up to 3 per tier |
 
 **Generated files:**
 

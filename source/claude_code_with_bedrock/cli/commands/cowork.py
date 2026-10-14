@@ -106,7 +106,7 @@ class CoworkGenerateCommand(Command):
         if models_option:
             model_aliases = [m.strip() for m in models_option.split(",")]
         else:
-            model_aliases = derive_model_aliases()
+            model_aliases = derive_model_aliases(profile)
 
         console.print(f"\n[dim]Profile: {profile_name}[/dim]")
         console.print(f"[dim]Bedrock region: {bedrock_region}[/dim]")

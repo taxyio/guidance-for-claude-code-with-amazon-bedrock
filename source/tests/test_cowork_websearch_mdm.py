@@ -65,6 +65,7 @@ def test_enabled_adds_headers_helper_entry():
     assert len(servers) == 1
     entry = servers[0]
     assert entry["name"] == WEBSEARCH_MCP_SERVER_NAME
+    assert entry["transport"] == "http"
     assert entry["url"] == "https://gw-abc.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp"
     # Without an override, the entry carries the OS placeholder; generators resolve it.
     assert entry["headersHelper"] == WEBSEARCH_HEADERS_HELPER_PLACEHOLDER

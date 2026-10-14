@@ -61,8 +61,8 @@ poetry run ccwb cowork generate
 # Generate only macOS profile
 poetry run ccwb cowork generate --format mobileconfig
 
-# Custom model list
-poetry run ccwb cowork generate --models opus,sonnet,haiku
+# Custom model list (full CRIS IDs; tier is inferred from the name)
+poetry run ccwb cowork generate --models eu.anthropic.claude-sonnet-5,eu.anthropic.claude-opus-5
 
 # Specific deployment profile
 poetry run ccwb cowork generate --profile Production
@@ -125,7 +125,7 @@ For automated deployment at scale, create an MDM profile with the following esse
 | `inferenceBedrockAwsDir` | Path to the directory containing AWS config/credentials files (default: `~/.aws`) |
 | `inferenceModels` | JSON array of model entries. Supports simple aliases (`["opus", "sonnet", "haiku"]`) or object entries with tier tagging (see below). First entry is the default |
 
-> **Note:** The model aliases used by CoWork 3P (`opus`, `sonnet`, `haiku`) are resolved internally by Claude Desktop and may differ from the CRIS model IDs configured for Claude Code via `ANTHROPIC_MODEL`. The `ccwb cowork generate` command includes all available aliases by default. Use `--models` to customize the list for your organization.
+> **Note:** `ccwb package` and `ccwb cowork generate` emit explicit CRIS model IDs for your profile's cross-region prefix (e.g. `eu.anthropic.claude-sonnet-5` for an EU deployment) — up to three per tier, newest first, with the profile's selected model as the default. Bare aliases (`opus`, `sonnet`, `haiku`) are only a fallback: Claude Desktop resolves them itself and may pick IDs that don't exist in your Bedrock region, which shows up as models not being found. Use `--models` to customize the list for your organization.
 
 #### Model Entries with Family Tier (v1.13576+)
 

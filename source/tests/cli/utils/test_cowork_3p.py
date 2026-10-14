@@ -1,11 +1,18 @@
-# ABOUTME: Tests for cowork_3p.py add_monitoring_config endpoint resolution
-# ABOUTME: Covers stack output success, stack failure with profile fallback, and both missing
+# ABOUTME: Tests for cowork_3p.py monitoring endpoint resolution and inferenceModels derivation
+# ABOUTME: Covers stack output fallbacks and region-correct model IDs for Claude Desktop
 
 """Tests for CoWork 3P monitoring configuration (endpoint resolution + auth headers)."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from claude_code_with_bedrock.cli.utils.cowork_3p import add_monitoring_config
+from claude_code_with_bedrock.cli.utils.cowork_3p import (
+    COWORK_DEFAULT_ALIASES,
+    COWORK_MODELS_PER_TIER,
+    add_monitoring_config,
+    build_inference_models,
+    derive_model_aliases,
+)
 
 
 class FakeProfile:
@@ -143,3 +150,44 @@ class TestAddMonitoringConfig:
         mdm = {}
         add_monitoring_config(mdm, profile, self._make_console())
         assert "otlpHeaders" not in mdm
+
+
+class TestDeriveModelAliases:
+    """Regression: bare opus/sonnet/haiku aliases let Claude Desktop resolve model
+    IDs that don't exist in the deployment region (e.g. us.* on eu-central-1)."""
+
+    @staticmethod
+    def _profile(prefix, selected=None):
+        return SimpleNamespace(cross_region_profile=prefix, selected_model=selected)
+
+    def test_eu_profile_emits_only_eu_model_ids(self):
+        models = derive_model_aliases(self._profile("eu", "eu.anthropic.claude-sonnet-5"))
+        assert models[0] == "eu.anthropic.claude-sonnet-5"
+        assert all(m.startswith("eu.") for m in models)
+        assert not set(models) & set(COWORK_DEFAULT_ALIASES)
+
+    def test_legacy_europe_key_resolves_to_eu(self):
+        assert derive_model_aliases(self._profile("europe")) == derive_model_aliases(self._profile("eu"))
+
+    def test_list_covers_multiple_tiers_without_duplicates(self):
+        models = derive_model_aliases(self._profile("us"))
+        assert len(models) == len(set(models))
+        tiers = [e["anthropicFamilyTier"] for e in build_inference_models(models)]
+        assert {"sonnet", "opus", "haiku"} <= set(tiers)
+        assert all(tiers.count(t) <= COWORK_MODELS_PER_TIER for t in set(tiers))
+        assert sum(t == "sonnet" for t in tiers) > 1  # wider than one model per tier
+
+    def test_each_tier_has_one_family_default(self):
+        entries = build_inference_models(derive_model_aliases(self._profile("global")))
+        defaults = [e["anthropicFamilyTier"] for e in entries if e.get("isFamilyDefault")]
+        assert len(defaults) == len(set(defaults))
+
+    def test_selected_model_moves_to_front_once(self):
+        models = derive_model_aliases(self._profile("eu", "eu.anthropic.claude-opus-4-8"))
+        assert models[0] == "eu.anthropic.claude-opus-4-8"
+        assert models.count("eu.anthropic.claude-opus-4-8") == 1
+
+    def test_falls_back_to_aliases_without_profile_or_catalog_match(self):
+        assert derive_model_aliases() == COWORK_DEFAULT_ALIASES
+        assert derive_model_aliases(self._profile(None)) == COWORK_DEFAULT_ALIASES
+        assert derive_model_aliases(self._profile("nowhere")) == COWORK_DEFAULT_ALIASES

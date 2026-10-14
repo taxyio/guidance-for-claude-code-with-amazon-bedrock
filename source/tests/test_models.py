@@ -37,8 +37,10 @@ class TestModelConfiguration:
         """Test that CLAUDE_MODELS has the expected structure."""
         expected_models = {
             "fable-5",
+            "sonnet-5-5",
             "sonnet-5",
             "sonnet-4-6",
+            "opus-5-5",
             "opus-5",
             "opus-4-8",
             "opus-4-8-govcloud",
@@ -436,6 +438,12 @@ class TestResolveModelForTier:
         assert haiku is not None and "eu." in haiku
         assert sonnet is not None and "eu." in sonnet
         assert opus is not None and "eu." in opus
+
+    def test_5_5_models_are_preferred_per_tier(self):
+        from claude_code_with_bedrock.models import resolve_model_for_tier
+
+        assert resolve_model_for_tier("sonnet", "eu") == "eu.anthropic.claude-sonnet-5-5"
+        assert resolve_model_for_tier("opus", "eu") == "eu.anthropic.claude-opus-5-5"
 
     def test_eu_admin_gets_eu_models(self):
         from claude_code_with_bedrock.models import resolve_model_for_tier
