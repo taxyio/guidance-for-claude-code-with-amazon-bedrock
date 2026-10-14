@@ -73,3 +73,46 @@ class TestPackageModelHandling:
                 assert "eu-west-1" in expected_display
             elif profile_key == "apac":
                 assert "ap-northeast-1" in expected_display
+
+
+class TestHaiku55Default:
+    """Haiku 5.5 is the haiku tier's first choice, and model_alias='haiku' makes
+    Claude Code start on it while Claude Desktop keeps selected_model first."""
+
+    def _profile(self) -> Profile:
+        return Profile(
+            name="test",
+            provider_domain="test.okta.com",
+            client_id="test-client-id",
+            credential_storage="session",
+            aws_region="eu-central-1",
+            identity_pool_name="test-pool",
+            cross_region_profile="eu",
+            selected_model="eu.anthropic.claude-sonnet-5",
+            model_alias="haiku",
+            monitoring_enabled=False,
+        )
+
+    def test_haiku_tier_resolves_to_haiku_5_5(self):
+        from claude_code_with_bedrock.models import resolve_model_for_tier
+
+        for prefix in ("us", "eu", "global", "jp", "au"):
+            assert resolve_model_for_tier("haiku", prefix) == f"{prefix}.anthropic.claude-haiku-5-5"
+
+    def test_settings_default_to_haiku_5_5(self, tmp_path):
+        import json
+
+        PackageCommand()._create_claude_settings(tmp_path, self._profile(), profile_name="test")
+        env = json.loads((tmp_path / "claude-settings" / "settings.json").read_text(encoding="utf-8"))["env"]
+        assert env["ANTHROPIC_MODEL"] == "haiku"
+        assert env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] == "eu.anthropic.claude-haiku-5-5"
+        assert env["ANTHROPIC_SMALL_FAST_MODEL"] == "eu.anthropic.claude-haiku-5-5"
+        assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "eu.anthropic.claude-sonnet-5-5"
+
+    def test_cowork_default_unchanged_haiku_family_default_is_5_5(self):
+        from claude_code_with_bedrock.cli.utils.cowork_3p import build_inference_models, derive_model_aliases
+
+        entries = build_inference_models(derive_model_aliases(self._profile()))
+        assert entries[0]["name"] == "eu.anthropic.claude-sonnet-5"  # Claude Desktop default
+        haiku_default = [e for e in entries if e.get("anthropicFamilyTier") == "haiku" and e.get("isFamilyDefault")]
+        assert [e["name"] for e in haiku_default] == ["eu.anthropic.claude-haiku-5-5"]

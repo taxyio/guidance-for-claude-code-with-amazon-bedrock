@@ -54,6 +54,7 @@ class TestModelConfiguration:
             "sonnet-4-5-govcloud",
             "sonnet-3-7",
             "sonnet-3-7-govcloud",
+            "haiku-5-5",
             "haiku-4-5",
         }
         assert set(CLAUDE_MODELS.keys()) == expected_models
