@@ -3401,6 +3401,12 @@ class InitCommand(Command):
             existing_config["settings_target"] = getattr(profile, "settings_target", "user")
             existing_config["claude_code_coexistence"] = getattr(profile, "claude_code_coexistence", False)
 
+            # Restore the Claude Code model alias (e.g. "haiku", "opusplan"). No wizard
+            # step sets it, so without this a re-run of init silently drops it and
+            # ANTHROPIC_MODEL falls back to the selected_model's tier.
+            if getattr(profile, "model_alias", None):
+                existing_config["aws"]["model_alias"] = profile.model_alias
+
             # Add cross-region profile if present
             if hasattr(profile, "cross_region_profile") and profile.cross_region_profile:
                 existing_config["aws"]["cross_region_profile"] = profile.cross_region_profile
