@@ -88,12 +88,21 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          # CallWithBearerToken authorizes against Resource '*', not a model ARN, so it
+          # can't share the model-scoped statements. InvokeModel stays model-scoped.
+          - Sid: AllowBedrockBearerToken
+            Effect: Allow
+            Action:
+              - 'bedrock:CallWithBearerToken'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:RequestedRegion': !Ref AllowedBedrockRegions
           - Sid: AllowBedrockInvokeRegional
             Effect: Allow
             Action:
               - 'bedrock:InvokeModel'
               - 'bedrock:InvokeModelWithResponseStream'
-              - 'bedrock:CallWithBearerToken'
               - 'bedrock:ListFoundationModels'
               - 'bedrock:ListInferenceProfiles'
             Resource:
@@ -108,7 +117,6 @@ Resources:
             Action:
               - 'bedrock:InvokeModel'
               - 'bedrock:InvokeModelWithResponseStream'
-              - 'bedrock:CallWithBearerToken'
               - 'bedrock:ListFoundationModels'
               - 'bedrock:ListInferenceProfiles'
             Resource:
