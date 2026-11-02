@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  One Claude MCP connector (vendor-hosted MCP server with per-user OAuth) on the
+  connectors gateway from connectors-gateway.yaml. Creates the outbound OAuth2
+  credential provider (client secret read from Secrets Manager) and the gateway
+  target. The tool schema is supplied up front from S3, so no admin sign-in is
+  needed on create or update. After the first deploy, register the CallbackUrl
+  output as a redirect URI on the vendor's OAuth app.
+
+Parameters:
+  GatewayIdentifier:
+    Type: String
+    Description: GatewayId output of the connectors-gateway stack.
+  PortalUrl:
+    Type: String
+    AllowedPattern: '^https://.+[^/]$'
+    Description: PortalUrl output of the connectors-gateway stack.
+  ToolSchemaS3Uri:
+    Type: String
+    AllowedPattern: '^s3://.+\.json$'
+    Description: 's3:// URI of the tool schema ({"tools": [...]}) for this connector.'
+  ConnectorName:
+    Type: String
+    AllowedPattern: '^[a-z0-9][a-z0-9-]{0,39}$'
+    Description: Target name; tools appear as <ConnectorName>___<tool>.
+  ConnectorDescription:
+    Type: String
+    Default: ''
+  McpEndpoint:
+    Type: String
+    AllowedPattern: '^https://.+'
+  ClientId:
+    Type: String
+    MinLength: 1
+  ClientSecretArn:
+    Type: String
+    AllowedPattern: '^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:ccwb-connectors/.+$'
+    Description: Secret under the ccwb-connectors/ prefix holding the vendor client secret.
+  ClientSecretJsonKey:
+    Type: String
+    Default: client_secret
+  ClientAuthenticationMethod:
+    Type: String
+    Default: CLIENT_SECRET_POST
+    AllowedValues: [CLIENT_SECRET_POST, CLIENT_SECRET_BASIC]
+  DiscoveryUrl:
+    Type: String
+    Default: ''
+    Description: OIDC discovery URL of the vendor's authorization server (or leave empty and set the endpoints below).
+  Issuer:
+    Type: String
+    Default: ''
+  AuthorizationEndpoint:
+    Type: String
+    Default: ''
+  TokenEndpoint:
+    Type: String
+    Default: ''
+  Scopes:
+    Type: CommaDelimitedList
+    Default: ''
+  # Optional extra parameters on the vendor authorization request.
+  ResourceParam:
+    Type: String
+    Default: ''
+    Description: RFC 8707 'resource' (for example the MCP server URL).
+  AudienceParam:
+    Type: String
+    Default: ''
+    Description: "'audience' (Auth0-style authorization servers)."
+  AccessTypeParam:
+    Type: String
+    Default: ''
+    Description: "'access_type' (Google: offline, to get a refresh token)."
+  PromptParam:
+    Type: String
+    Default: ''
+    Description: "'prompt' (Google: consent, to always return a refresh token)."
+
+Conditions:
+  UseDiscovery: !Not [!Equals [!Ref DiscoveryUrl, '']]
+  HasResource: !Not [!Equals [!Ref ResourceParam, '']]
+  HasAudience: !Not [!Equals [!Ref AudienceParam, '']]
+  HasAccessType: !Not [!Equals [!Ref AccessTypeParam, '']]
+  HasPrompt: !Not [!Equals [!Ref PromptParam, '']]
+  HasAnyParam: !Or [!Condition HasResource, !Condition HasAudience, !Condition HasAccessType, !Condition HasPrompt]
+  HasScopes: !Not [!Equals [!Join ['', !Ref Scopes], '']]
+  HasDescription: !Not [!Equals [!Ref ConnectorDescription, '']]
+
+Resources:
+  CredentialProvider:
+    Type: AWS::BedrockAgentCore::OAuth2CredentialProvider
+    Properties:
+      Name: !Ref 'AWS::StackName'
+      CredentialProviderVendor: CustomOauth2
+      Oauth2ProviderConfigInput:
+        CustomOauth2ProviderConfig:
+          OauthDiscovery: !If
+            - UseDiscovery
+            - DiscoveryUrl: !Ref DiscoveryUrl
+            - AuthorizationServerMetadata:
+                Issuer: !Ref Issuer
+                AuthorizationEndpoint: !Ref AuthorizationEndpoint
+                TokenEndpoint: !Ref TokenEndpoint
+                ResponseTypes: [code]
+          ClientId: !Ref ClientId
+          ClientSecretSource: EXTERNAL
+          ClientSecretConfig:
+            SecretId: !Ref ClientSecretArn
+            JsonKey: !Ref ClientSecretJsonKey
+          ClientAuthenticationMethod: !Ref ClientAuthenticationMethod
+
+  Target:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    # The McpServer/OAuth AUTHORIZATION_CODE shapes are newer than the schema
+    # bundled with current cfn-lint; validated against a live gateway.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [E3002, E3003, E3018]
+    Properties:
+      GatewayIdentifier: !Ref GatewayIdentifier
+      Name: !Ref ConnectorName
+      Description: !If [HasDescription, !Ref ConnectorDescription, !Ref 'AWS::NoValue']
+      TargetConfiguration:
+        Mcp:
+          McpServer:
+            Endpoint: !Ref McpEndpoint
+            McpToolSchema:
+              S3:
+                Uri: !Ref ToolSchemaS3Uri
+      CredentialProviderConfigurations:
+        - CredentialProviderType: OAUTH
+          CredentialProvider:
+            OauthCredentialProvider:
+              ProviderArn: !GetAtt CredentialProvider.CredentialProviderArn
+              GrantType: AUTHORIZATION_CODE
+              Scopes: !If [HasScopes, !Ref Scopes, []]
+              DefaultReturnUrl: !Sub '${PortalUrl}/connect/callback'
+              CustomParameters: !If
+                - HasAnyParam
+                - resource: !If [HasResource, !Ref ResourceParam, !Ref 'AWS::NoValue']
+                  audience: !If [HasAudience, !Ref AudienceParam, !Ref 'AWS::NoValue']
+                  access_type: !If [HasAccessType, !Ref AccessTypeParam, !Ref 'AWS::NoValue']
+                  prompt: !If [HasPrompt, !Ref PromptParam, !Ref 'AWS::NoValue']
+                - !Ref 'AWS::NoValue'
+
+Outputs:
+  CallbackUrl:
+    Description: Register this redirect URI on the vendor's OAuth app.
+    Value: !GetAtt CredentialProvider.CallbackUrl
+  TargetId:
+    Value: !GetAtt Target.TargetId

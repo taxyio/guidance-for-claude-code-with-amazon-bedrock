@@ -10,6 +10,7 @@ from cleo.helpers import option
 from rich.console import Console
 from rich.panel import Panel
 
+from claude_code_with_bedrock.cli.utils.connectors import add_connectors_mcp_config
 from claude_code_with_bedrock.cli.utils.cowork_3p import (
     add_monitoring_config,
     add_websearch_mcp_config,
@@ -128,6 +129,9 @@ class CoworkGenerateCommand(Command):
 
         # Add the AgentCore web search gateway as a managed MCP server (if enabled)
         add_websearch_mcp_config(mdm_config, profile, console)
+
+        # Add remote MCP connectors (Stripe, Taxy Workspace, ...)
+        add_connectors_mcp_config(mdm_config, profile, console)
 
         # Generate requested formats
         generated = []

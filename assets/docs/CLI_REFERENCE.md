@@ -136,6 +136,7 @@ poetry run ccwb deploy [stack] [options]
 5. **analytics** - Kinesis Firehose and Athena SQL query pipeline (central mode only, optional)
 6. **quota** - Per-user token quota monitoring and alerts (optional, requires dashboard)
 7. **codebuild** - AWS CodeBuild for Windows binary builds (optional, only if enabled during init)
+8. **connectors** - AgentCore Gateway + consent portal for MCP connectors with per-user OAuth, plus one stack per gateway connector (optional, only if the profile has `"via": "gateway"` connectors; OIDC only). See [CONNECTORS.md](CONNECTORS.md)
 
 > **Note**: In sidecar monitoring mode, the auth and dashboard stacks are deployed. The networking, monitoring, and analytics stacks are skipped because the OpenTelemetry collector runs locally on each developer's machine. Both modes include the same PromQL CloudWatch dashboard with full metric analytics.
 

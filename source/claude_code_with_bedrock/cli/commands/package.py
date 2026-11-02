@@ -28,6 +28,12 @@ from claude_code_with_bedrock.cli.utils.coexistence import (
     windows_launcher_block,
     windows_migration_block,
 )
+from claude_code_with_bedrock.cli.utils.connectors import (
+    add_connectors_mcp_config,
+    bash_connectors_block,
+    has_gateway_connectors,
+    windows_connectors_block,
+)
 from claude_code_with_bedrock.cli.utils.display import display_configuration_info
 from claude_code_with_bedrock.cli.utils.helpers import get_codebuild_region
 from claude_code_with_bedrock.cli.validators import validate_profile_for_packaging
@@ -3025,7 +3031,7 @@ if [ -d "claude-settings" ] && [ -f "claude-settings/settings.json" ]; then
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}/settings.json"; fi
     echo "✓ Claude Code settings installed"
 fi
-{coexist_migration_block}{zero_binary_launcher_block}
+{coexist_migration_block}{bash_connectors_block(profile)}{zero_binary_launcher_block}
 echo
 echo "======================================"
 echo "Installation complete!"
@@ -3165,7 +3171,8 @@ fi
         # {"Authorization":"Bearer <id_token>"} for Claude Desktop's
         # managedMcpServers headersHelper. Bound to this deployment profile.
         websearch_helper_block = ""
-        _ws_enabled = getattr(profile, "web_search_enabled", False)
+        # Also needed by the MCP connectors gateway (same id_token header).
+        _ws_enabled = getattr(profile, "web_search_enabled", False) or has_gateway_connectors(profile)
         _ws_auth = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", "oidc"))
         if _ws_enabled and _ws_auth != "idc":
             websearch_helper_block = f"""
@@ -3357,7 +3364,7 @@ with open('$ACTUAL_HOME/{claude_dir}/settings.json', 'w') as f:
         fi
     fi
 fi
-{coexist_migration_block}
+{coexist_migration_block}{bash_connectors_block(profile)}
 # Copy OTEL helper executable if present
 if [ -f "$OTEL_BINARY" ]; then
     echo
@@ -3632,7 +3639,8 @@ echo
         # absolute — Claude reads it literally — handled via __CCWB_HOME__ in the
         # .reg, resolved by the cowork-3p.reg substitution block below.)
         windows_websearch_block = ""
-        _ws_enabled = getattr(profile, "web_search_enabled", False)
+        # Also needed by the MCP connectors gateway (same id_token header).
+        _ws_enabled = getattr(profile, "web_search_enabled", False) or has_gateway_connectors(profile)
         _ws_auth = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", "oidc"))
         if _ws_enabled and _ws_auth != "idc":
             windows_websearch_block = f"""
@@ -3848,7 +3856,7 @@ if exist "claude-settings" (
         )
     )
 )
-{win_coexist_migration_block}
+{win_coexist_migration_block}{windows_connectors_block(profile)}
 REM Configure AWS profiles
 echo.
 echo Configuring AWS profiles...
@@ -4554,6 +4562,7 @@ This package installs Amazon Bedrock **next to** your existing Claude Code:
 
             add_monitoring_config(mdm_config, profile, console)
             add_websearch_mcp_config(mdm_config, profile, console)
+            add_connectors_mcp_config(mdm_config, profile, console)
             generate_all(output_dir, mdm_config, console)
 
         except Exception as e:

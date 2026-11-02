@@ -264,7 +264,7 @@ The full set of MDM configuration keys is documented in the [official Anthropic 
 | `isDesktopExtensionDirectoryEnabled` | boolean | Show the Anthropic extension directory |
 | `isDesktopExtensionSignatureRequired` | boolean | Require signed desktop extensions |
 | `isLocalDevMcpEnabled` | boolean | Permit user-added local MCP servers |
-| `managedMcpServers` | string | JSON array of managed MCP server configs |
+| `managedMcpServers` | string | JSON array of managed MCP server configs (connectors from the profile are added automatically — see [CONNECTORS.md](CONNECTORS.md)) |
 | `disabledBuiltinTools` | string | JSON array of tool names to disable |
 
 ### Telemetry
