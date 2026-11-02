@@ -48,8 +48,9 @@ First use of a target → MCP URL elicitation → user signs in at the vendor �
 How it works:
 - Users reach the gateway with the same OIDC id_token that `credential-process` already caches, via the `websearch-headers` helper. They do not sign in to the gateway itself.
 - All gateway connectors appear to clients as **one** MCP server named `connectors`. Tools are named `<connector>___<tool>`, for example `slack___search_messages`.
-- The first time a user calls a connector they haven't connected, the gateway returns a standard MCP **URL elicitation** (`-32042`). Claude Code shows the link and retries the call after sign-in.
-- Users can also connect all their accounts up front on the **consent portal** page.
+- The first time a user calls a connector they haven't connected, the gateway returns a standard MCP **URL elicitation** (`-32042`). Claude Code shows the link and retries the call once the user confirms the dialog.
+- **Users must return to Claude Code and confirm the dialog after signing in.** The gateway does not send `notifications/elicitation/complete`, so nothing tells Claude Code the sign-in has finished, and the browser tab ends on the consent portal. Until the user confirms, the call looks stuck.
+- Users can also connect all their accounts up front on the **consent portal** page (recommended in onboarding). This avoids the dialog entirely: calls then succeed on first use.
 
 ### Prerequisites: the OIDC app (one time)
 
