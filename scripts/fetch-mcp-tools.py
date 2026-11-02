@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 # ABOUTME: Captures a remote MCP server's tool list as {"tools": [...]} for a ccwb gateway connector.
-# ABOUTME: Usage: fetch-mcp-tools.py <mcp-url> <out.json> [--token <bearer>] (token optional for public listings).
+# ABOUTME: Usage: fetch-mcp-tools.py <mcp-url> <out.json> [--token <bearer> | --oauth ...] (see --help).
 """Capture the tool schema for an AgentCore Gateway connector target.
 
 Gateway connectors use per-user OAuth, so the gateway cannot list a vendor's
 tools by itself; ccwb uploads this file as the target's mcpToolSchema. Some
 servers (Google Drive/Docs/Sheets) list tools without a token. Others need a
-user access token for the vendor (for example a Slack user token from the
-Slack app's "OAuth & Permissions" page).
+user access token for the vendor: pass one with --token (for example a Slack
+user token from the Slack app's "OAuth & Permissions" page), or let the script
+sign you in with --oauth (authorization code + PKCE against a local callback,
+http://127.0.0.1:<port>/callback by default; add that redirect URI to the
+vendor's OAuth app temporarily). The token is kept in memory only.
 """
 
 import argparse
+import base64
+import hashlib
+import http.server
 import json
+import secrets
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
+import webbrowser
 
 
 def _post(url, body, token=None, session=None):
@@ -44,7 +53,11 @@ def fetch_tools(url, token=None):
             "jsonrpc": "2.0",
             "id": 0,
             "method": "initialize",
-            "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "ccwb", "version": "1"}},
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "ccwb", "version": "1"},
+            },
         },
         token,
     )
@@ -63,14 +76,96 @@ def fetch_tools(url, token=None):
             return tools
 
 
+def oauth_token(authorize_url, token_url, client_id, client_secret, scope, redirect_uri, timeout=300):
+    """Sign the user in (authorization code + PKCE) and return an access token."""
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    state = secrets.token_urlsafe(24)
+    params = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    if scope:
+        params["scope"] = scope
+    result = {}
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            if q.get("state", [None])[0] != state:
+                result["error"] = "state mismatch"
+            elif "error" in q:
+                result["error"] = q["error"][0] + ": " + q.get("error_description", [""])[0]
+            else:
+                result["code"] = q.get("code", [None])[0]
+            self.send_response(200)
+            self.send_header("content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Signed in. You can close this tab and return to the terminal.")
+
+        def log_message(self, *a):
+            pass
+
+    parsed = urllib.parse.urlparse(redirect_uri)
+    server = http.server.HTTPServer((parsed.hostname, parsed.port), Handler)
+    server.timeout = timeout
+    url = authorize_url + ("&" if "?" in authorize_url else "?") + urllib.parse.urlencode(params)
+    print(f"Opening the browser to sign in. If it does not open, visit:\n  {url}", file=sys.stderr)
+    webbrowser.open(url)
+    server.handle_request()
+    server.server_close()
+    if not result.get("code"):
+        raise RuntimeError(f"sign-in failed: {result.get('error', 'timed out')}")
+
+    body = urllib.parse.urlencode(
+        {
+            "grant_type": "authorization_code",
+            "code": result["code"],
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code_verifier": verifier,
+        }
+    ).encode()
+    req = urllib.request.Request(token_url, data=body, headers={"content-type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        tok = json.loads(r.read().decode())
+    # Standard OAuth responses carry access_token; Slack user flows nest it under authed_user.
+    access = tok.get("access_token") or (tok.get("authed_user") or {}).get("access_token")
+    if not access:
+        raise RuntimeError(f"token response had no access_token (keys: {sorted(tok)})")
+    return access
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("url")
-    ap.add_argument("out")
-    ap.add_argument("--token")
+    ap.add_argument("url", help="MCP server URL")
+    ap.add_argument("out", help='output file ({"tools": [...]})')
+    ap.add_argument("--token", help="bearer token for the MCP server")
+    ap.add_argument("--oauth", action="store_true", help="sign in via the browser to obtain a token")
+    ap.add_argument("--authorize-url")
+    ap.add_argument("--token-url")
+    ap.add_argument("--client-id")
+    ap.add_argument("--client-secret-file", help="file containing only the client secret")
+    ap.add_argument("--scope", default="", help="space-separated scopes")
+    ap.add_argument("--redirect-uri", default="http://127.0.0.1:8765/callback")
     a = ap.parse_args()
+    token = a.token
     try:
-        tools = fetch_tools(a.url, a.token)
+        if a.oauth:
+            missing = [
+                f for f in ("authorize_url", "token_url", "client_id", "client_secret_file") if not getattr(a, f)
+            ]
+            if missing:
+                ap.error("--oauth needs " + ", ".join("--" + m.replace("_", "-") for m in missing))
+            with open(a.client_secret_file, encoding="utf-8") as f:
+                secret = f.read().strip()
+            token = oauth_token(a.authorize_url, a.token_url, a.client_id, secret, a.scope, a.redirect_uri)
+        tools = fetch_tools(a.url, token)
     except (urllib.error.URLError, RuntimeError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1

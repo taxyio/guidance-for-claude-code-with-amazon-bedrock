@@ -111,9 +111,16 @@ Re-running `ccwb deploy connectors` updates changed connectors and removes stack
 With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each target is therefore created with its tool list up front, stored in S3. As a result, creating or updating a connector needs no admin sign-in.
 
 - **Bundled:** `google-drive`, `google-docs`, `google-sheets` and `taxy-workspace`, in `deployment/infrastructure/connector-tool-schemas/`.
-- **Captured:** for other vendors, run:
+- **Captured:** for other vendors, use a user token you already have:
   ```bash
   scripts/fetch-mcp-tools.py <mcp-url> slack-tools.json --token <user-access-token>
+  ```
+  Or let the script sign you in through the vendor app. Temporarily add `http://127.0.0.1:8765/callback` as a redirect URI on the app, and keep the client secret in a file:
+  ```bash
+  scripts/fetch-mcp-tools.py https://mcp.hubspot.com hubspot-tools.json --oauth \
+    --authorize-url https://mcp.hubspot.com/oauth/authorize/user \
+    --token-url https://mcp.hubspot.com/oauth/v3/token \
+    --client-id <client-id> --client-secret-file ./hubspot-secret.txt
   ```
 - Re-capture when a vendor adds tools, then re-run `ccwb deploy connectors`.
 
