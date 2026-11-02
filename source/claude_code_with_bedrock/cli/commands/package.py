@@ -4530,6 +4530,7 @@ This package installs Amazon Bedrock **next to** your existing Claude Code:
         consistency with the standalone 'ccwb cowork generate' command.
         """
         from claude_code_with_bedrock.cli.utils.cowork_3p import (
+            add_beta_features,
             add_monitoring_config,
             add_websearch_mcp_config,
             build_mdm_config,
@@ -4552,13 +4553,7 @@ This package installs Amazon Bedrock **next to** your existing Claude Code:
                 credential_helper_ttl_sec=getattr(profile, "cowork_credential_helper_ttl_sec", 3500),
             )
 
-            # Beta features (per-feature managed configuration keys)
-            if getattr(profile, "cowork_chat_tab_enabled", False):
-                mdm_config["chatTabEnabled"] = True
-            if getattr(profile, "cowork_chat_advanced_file_analysis", False):
-                mdm_config["chatAdvancedFileAnalysisEnabled"] = True
-            if getattr(profile, "cowork_inference_session_lifetime_sec", None):
-                mdm_config["inferenceSessionLifetimeSec"] = profile.cowork_inference_session_lifetime_sec
+            add_beta_features(mdm_config, profile)
 
             add_monitoring_config(mdm_config, profile, console)
             add_websearch_mcp_config(mdm_config, profile, console)

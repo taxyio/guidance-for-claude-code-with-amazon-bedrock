@@ -273,6 +273,20 @@ def build_mdm_config(
     return config
 
 
+def add_beta_features(mdm_config: dict, profile) -> None:
+    """Per-feature managed keys (Chat tab, advanced file analysis, session lifetime).
+
+    Shared by 'ccwb package' and 'ccwb cowork generate' so both emit the same
+    configuration (cowork generate used to drop these, disabling the Chat tab).
+    """
+    if getattr(profile, "cowork_chat_tab_enabled", False):
+        mdm_config["chatTabEnabled"] = True
+    if getattr(profile, "cowork_chat_advanced_file_analysis", False):
+        mdm_config["chatAdvancedFileAnalysisEnabled"] = True
+    if getattr(profile, "cowork_inference_session_lifetime_sec", None):
+        mdm_config["inferenceSessionLifetimeSec"] = profile.cowork_inference_session_lifetime_sec
+
+
 def add_monitoring_config(mdm_config: dict, profile, console: Console) -> None:
     """Add OTLP endpoint to MDM config if monitoring stack is deployed."""
     if not profile.monitoring_enabled:
