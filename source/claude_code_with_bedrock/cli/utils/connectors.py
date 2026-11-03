@@ -69,6 +69,15 @@ PRESETS: dict[str, str] = {
     "amplitude-eu": "https://mcp.eu.amplitude.com/mcp",  # Amplitude EU data center
 }
 
+# Claude Desktop rejects the OAuth loopback callback unless the browser was sent
+# back by the authorization server's host. Vendors whose sign-in redirects from a
+# different host need it allowed via oauth.additionalRedirectReferrerHosts
+# (verified in Desktop logs: Amplitude returns from its web app, not mcp.*).
+PRESET_REFERRER_HOSTS: dict[str, tuple[str, ...]] = {
+    "amplitude": ("app.amplitude.com",),
+    "amplitude-eu": ("app.eu.amplitude.com",),
+}
+
 STATE_FILE_NAME = "connectors-managed.txt"
 
 VIA_DIRECT = "direct"
@@ -182,6 +191,7 @@ GATEWAY_SETTINGS_DOC = (
 # Strict: names and URLs are spliced into bash/batch/PowerShell installers.
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 _URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$")
+_HOST_RE = re.compile(r"^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
 # Gateway target names become tool prefixes (<name>___tool); keep them short.
 _GATEWAY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 _SECRET_ARN_RE = re.compile(
@@ -198,6 +208,7 @@ class Connector:
     url: str
     surfaces: tuple[str, ...] = ALL_SURFACES
     headers_helper: bool = False  # authenticate with the ccwb id_token helper (gateway)
+    referrer_hosts: tuple[str, ...] = ()  # extra OAuth callback referrer hosts (Claude Desktop)
 
 
 @dataclass(frozen=True)
@@ -249,7 +260,7 @@ def _parse_direct(item) -> Connector:
                 f"Unknown connector preset '{item}'. Known presets: {', '.join(sorted(PRESETS))}"
                 + (hint if key in GATEWAY_PRESETS else "")
             )
-        return Connector(name=key, url=PRESETS[key])
+        return Connector(name=key, url=PRESETS[key], referrer_hosts=PRESET_REFERRER_HOSTS.get(key, ()))
 
     name = str(item.get("name", "")).strip()
     url = str(item.get("url", "") or PRESETS.get(name, "")).strip()
@@ -258,7 +269,19 @@ def _parse_direct(item) -> Connector:
             f"Invalid connector name '{name}': use lowercase letters, digits and '-' (max 63 chars)"
         )
     _check_url(name, url)
-    return Connector(name=name, url=url, surfaces=_parse_surfaces(name, item.get("surfaces", list(ALL_SURFACES))))
+    hosts = item.get("redirect_referrer_hosts", PRESET_REFERRER_HOSTS.get(name, ()))
+    if isinstance(hosts, str):
+        hosts = hosts.split()
+    if not isinstance(hosts, list | tuple) or any(not _HOST_RE.match(str(h)) for h in hosts):
+        raise ConnectorConfigError(
+            f"Invalid redirect_referrer_hosts for connector '{name}': {hosts!r} (host names only)"
+        )
+    return Connector(
+        name=name,
+        url=url,
+        surfaces=_parse_surfaces(name, item.get("surfaces", list(ALL_SURFACES))),
+        referrer_hosts=tuple(hosts),
+    )
 
 
 def _parse_gateway(item: dict) -> GatewayConnector:
@@ -475,7 +498,10 @@ def cowork_entries(profile) -> list[dict]:
                 }
             )
         else:
-            entries.append({"name": c.name, "transport": "http", "url": c.url, "oauth": True})
+            # oauth: true = dynamic registration. An object with only
+            # additionalRedirectReferrerHosts (space-separated) still registers dynamically.
+            oauth = {"additionalRedirectReferrerHosts": " ".join(c.referrer_hosts)} if c.referrer_hosts else True
+            entries.append({"name": c.name, "transport": "http", "url": c.url, "oauth": oauth})
     return entries
 
 

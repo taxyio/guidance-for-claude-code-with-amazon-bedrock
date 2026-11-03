@@ -32,7 +32,7 @@ Add presets or custom servers to the profile (`~/.ccwb/profiles/<profile>.json`)
 | `amplitude` | `https://mcp.amplitude.com/mcp` (US data center) |
 | `amplitude-eu` | `https://mcp.eu.amplitude.com/mcp` (EU data center) |
 
-Custom entries need a `name` (lowercase letters, digits, `-`) and an `https://` `url`. `surfaces` is optional and defaults to `["claude-code", "cowork"]`. Only add servers that support Dynamic Client Registration. To check, look for `registration_endpoint` in the vendor's `/.well-known/oauth-authorization-server` metadata.
+Custom entries need a `name` (lowercase letters, digits, `-`) and an `https://` `url`. If the vendor's sign-in sends the browser back from a different host than its authorization server, Claude Desktop rejects the callback ("Referer does not match the identity provider host"). Add that host with `redirect_referrer_hosts` (the Amplitude presets already do this for `app.amplitude.com` / `app.eu.amplitude.com`). `surfaces` is optional and defaults to `["claude-code", "cowork"]`. Only add servers that support Dynamic Client Registration. To check, look for `registration_endpoint` in the vendor's `/.well-known/oauth-authorization-server` metadata.
 
 **User experience:**
 - **Cowork:** the connector appears automatically. The user signs in when it is first used.

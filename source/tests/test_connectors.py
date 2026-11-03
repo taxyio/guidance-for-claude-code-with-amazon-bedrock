@@ -145,6 +145,27 @@ class TestCowork:
         add_connectors_mcp_config(cfg, _profile(), _quiet())
         assert "managedMcpServers" not in cfg
 
+    def test_amplitude_allows_its_web_app_as_callback_referrer(self):
+        """Regression: Desktop rejected Amplitude's OAuth callback ('Referer host
+        app.eu.amplitude.com not in [mcp.eu.amplitude.com]')."""
+        cfg = {}
+        add_connectors_mcp_config(cfg, _profile(["amplitude-eu", "amplitude", "stripe"]), _quiet())
+        servers = {s["name"]: s for s in json.loads(cfg["managedMcpServers"])}
+        assert servers["amplitude-eu"]["oauth"] == {"additionalRedirectReferrerHosts": "app.eu.amplitude.com"}
+        assert servers["amplitude"]["oauth"] == {"additionalRedirectReferrerHosts": "app.amplitude.com"}
+        assert servers["stripe"]["oauth"] is True
+
+    def test_custom_referrer_hosts(self):
+        item = {
+            "name": "acme",
+            "url": "https://mcp.acme.example/mcp",
+            "redirect_referrer_hosts": "app.acme.example login.acme.example",
+        }
+        (c,) = resolve_connectors(_profile([item]))
+        assert c.referrer_hosts == ("app.acme.example", "login.acme.example")
+        with pytest.raises(ConnectorConfigError, match="redirect_referrer_hosts"):
+            resolve_connectors(_profile([{**item, "redirect_referrer_hosts": ["https://evil/"]}]))
+
     def test_entries_use_automatic_oauth_registration(self):
         cfg = {}
         add_connectors_mcp_config(cfg, _profile(["stripe", "taxy-workspace"]), _quiet())
