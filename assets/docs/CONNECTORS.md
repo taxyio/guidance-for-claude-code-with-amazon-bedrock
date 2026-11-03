@@ -28,7 +28,7 @@ Add presets or custom servers to the profile (`~/.ccwb/profiles/<profile>.json`)
 |--------|-----|
 | `stripe` | `https://mcp.stripe.com` |
 | `taxy-workspace` | `https://mcp.workspace.taxy.io/mcp` |
-| `atlassian` | `https://mcp.atlassian.com/v1/mcp` (Jira, Confluence) |
+| `atlassian` | `https://mcp.atlassian.com/v2/mcp` (Jira, Confluence; the v1 endpoints are removed in March 2027) |
 | `amplitude` | `https://mcp.amplitude.com/mcp` (US data center) |
 | `amplitude-eu` | `https://mcp.eu.amplitude.com/mcp` (EU data center) |
 

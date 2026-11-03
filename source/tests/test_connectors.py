@@ -76,7 +76,7 @@ class TestProfile:
     @pytest.mark.parametrize(
         "preset, url",
         [
-            ("atlassian", "https://mcp.atlassian.com/v1/mcp"),
+            ("atlassian", "https://mcp.atlassian.com/v2/mcp"),
             ("amplitude", "https://mcp.amplitude.com/mcp"),
             ("amplitude-eu", "https://mcp.eu.amplitude.com/mcp"),
         ],

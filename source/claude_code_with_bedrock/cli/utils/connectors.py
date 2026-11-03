@@ -62,7 +62,9 @@ ALL_SURFACES = (SURFACE_CLAUDE_CODE, SURFACE_COWORK)
 PRESETS: dict[str, str] = {
     "stripe": "https://mcp.stripe.com",
     "taxy-workspace": "https://mcp.workspace.taxy.io/mcp",
-    "atlassian": "https://mcp.atlassian.com/v1/mcp",  # Jira + Confluence (Atlassian Rovo MCP server)
+    # Jira + Confluence (Atlassian Rovo MCP server). v2 has its own authorization server
+    # (auth.atlassian.com, still DCR); v1 endpoints are removed in March 2027.
+    "atlassian": "https://mcp.atlassian.com/v2/mcp",
     "amplitude": "https://mcp.amplitude.com/mcp",  # Amplitude US data center
     "amplitude-eu": "https://mcp.eu.amplitude.com/mcp",  # Amplitude EU data center
 }
