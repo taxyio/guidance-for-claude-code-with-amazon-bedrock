@@ -234,7 +234,11 @@ def _state(tmp_path: Path) -> list[str]:
 
 
 def _run_bash(profile: Profile, env: dict) -> str:
-    script = 'ACTUAL_HOME="$HOME"; ACTUAL_USER="$USER"\n' + bash_connectors_block(profile)
+    # Hide system-wide claude installs (e.g. /opt/homebrew/bin) so tests only see the fake.
+    block = bash_connectors_block(profile).replace(
+        'CCWB_SYSTEM_CLAUDE_PATHS="/opt/homebrew/bin/claude /usr/local/bin/claude"', 'CCWB_SYSTEM_CLAUDE_PATHS=""'
+    )
+    script = 'ACTUAL_HOME="$HOME"; ACTUAL_USER="$USER"\n' + block
     r = subprocess.run(["bash", "-e", "-c", script], env=env, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr
     return r.stdout
@@ -296,6 +300,20 @@ class TestBashSnippet:
         env = _fake_env(tmp_path)
         assert _run_bash(_profile([]), env).strip() == ""
         assert _calls(tmp_path) == []
+
+    def test_finds_claude_outside_path_like_jamf_root(self, tmp_path):
+        """Jamf runs install.sh as root with PATH=/usr/bin:/bin:/usr/sbin:/sbin, so the
+        user's claude (~/.local/bin, /opt/homebrew/bin) is not on PATH. Regression:
+        connectors were silently skipped on every Jamf-managed Mac."""
+        env = _fake_env(tmp_path, with_claude=False)
+        local_bin = tmp_path / "home" / ".local" / "bin"
+        local_bin.mkdir(parents=True)
+        (local_bin / "claude").write_text(FAKE_CLAUDE_SH)
+        (local_bin / "claude").chmod(0o755)
+        env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
+        out = _run_bash(_profile(["stripe"]), env)
+        assert "not found" not in out
+        assert f"|mcp add --transport http -s user stripe {STRIPE}" in _calls(tmp_path)
 
     def test_missing_claude_prints_manual_commands(self, tmp_path):
         env = _fake_env(tmp_path, with_claude=False)

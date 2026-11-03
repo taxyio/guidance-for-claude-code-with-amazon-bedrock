@@ -543,18 +543,28 @@ CCWB_HEADERS_HELPER="$ACTUAL_HOME/{INSTALL_DIR_MARKER}/{HELPER_FILE_NAME}"
 CCWB_CFG_DIR={cfg_dir}
 CCWB_CONNECTOR_STATE="$ACTUAL_HOME/{INSTALL_DIR_MARKER}/{STATE_FILE_NAME}"
 """
-        + r"""_ccwb_claude() {
+        + r"""# Locate claude even when PATH lacks it (Jamf/MDM run this as root with a minimal PATH).
+CCWB_SYSTEM_CLAUDE_PATHS="/opt/homebrew/bin/claude /usr/local/bin/claude"
+CCWB_CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+if [ -z "$CCWB_CLAUDE_BIN" ]; then
+    for _ccwb_c in "$ACTUAL_HOME/.local/bin/claude" "$ACTUAL_HOME/.claude/local/claude" $CCWB_SYSTEM_CLAUDE_PATHS; do
+        if [ -x "$_ccwb_c" ]; then CCWB_CLAUDE_BIN="$_ccwb_c"; break; fi
+    done
+fi
+_ccwb_claude() {
+    # Its own dir first on PATH so npm-installed claude finds node.
+    _ccwb_path="$(dirname "$CCWB_CLAUDE_BIN"):/opt/homebrew/bin:/usr/local/bin:$PATH"
     if [ -n "$SUDO_USER" ]; then
-        sudo -u "$ACTUAL_USER" -H env ${CCWB_CFG_DIR:+CLAUDE_CONFIG_DIR="$CCWB_CFG_DIR"} claude "$@"
+        sudo -u "$ACTUAL_USER" -H env PATH="$_ccwb_path" ${CCWB_CFG_DIR:+CLAUDE_CONFIG_DIR="$CCWB_CFG_DIR"} "$CCWB_CLAUDE_BIN" "$@"
     else
-        env ${CCWB_CFG_DIR:+CLAUDE_CONFIG_DIR="$CCWB_CFG_DIR"} claude "$@"
+        env PATH="$_ccwb_path" ${CCWB_CFG_DIR:+CLAUDE_CONFIG_DIR="$CCWB_CFG_DIR"} "$CCWB_CLAUDE_BIN" "$@"
     fi
 }
 if [ -n "$CCWB_CONNECTORS" ] || [ -s "$CCWB_CONNECTOR_STATE" ]; then
     echo
     echo "Configuring MCP connectors for Claude Code..."
     if [ -n "$CCWB_CFG_DIR" ]; then mkdir -p "$CCWB_CFG_DIR"; fi
-    if command -v claude >/dev/null 2>&1; then
+    if [ -n "$CCWB_CLAUDE_BIN" ]; then
         # State holds name=url pairs this installer added. Unchanged entries are
         # left alone so users keep their vendor sign-in; stale ones are removed.
         _ccwb_prev=""
@@ -641,7 +651,13 @@ try {{
     Write-Host 'Configuring MCP connectors for Claude Code...'
     if ($cfgDir) {{ New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null; $env:CLAUDE_CONFIG_DIR = $cfgDir }}
     $now = @()
-    $claude = Get-Command claude -ErrorAction SilentlyContinue
+    $claude = (Get-Command claude -ErrorAction SilentlyContinue).Source
+    if (-not $claude) {{
+        $candidates = @()
+        if ($env:USERPROFILE) {{ $candidates += (Join-Path $env:USERPROFILE '.local\\bin\\claude.exe') }}
+        if ($env:APPDATA) {{ $candidates += (Join-Path $env:APPDATA 'npm\\claude.cmd') }}
+        foreach ($c in $candidates) {{ if (Test-Path $c) {{ $claude = $c; break }} }}
+    }}
     if ($claude) {{
         # State holds name=url pairs this installer added: keep unchanged ones
         # (users keep their vendor sign-in), remove stale ones.
@@ -649,15 +665,15 @@ try {{
         foreach ($old in $prev) {{
             if ($pairs -notcontains $old) {{
                 $oldName = $old.Split('=')[0]
-                & claude mcp remove -s user $oldName *> $null
+                & $claude mcp remove -s user $oldName *> $null
                 if (-not $desired.Contains($oldName)) {{ Write-Host ('  OK Removed MCP connector: ' + $oldName) }}
             }}
         }}
         foreach ($name in $desired.Keys) {{
             $pair = $name + '=' + $desired[$name]
             if ($prev -contains $pair) {{ Write-Host ('  OK MCP connector: ' + $name + ' (unchanged)'); $now += $pair; continue }}
-            if ($helperNames -contains $name) {{ & claude mcp add-json -s user $name (Get-AddJson $desired[$name]) *> $null }}
-            else {{ & claude mcp add --transport http -s user $name $desired[$name] *> $null }}
+            if ($helperNames -contains $name) {{ & $claude mcp add-json -s user $name (Get-AddJson $desired[$name]) *> $null }}
+            else {{ & $claude mcp add --transport http -s user $name $desired[$name] *> $null }}
             if ($LASTEXITCODE -eq 0) {{ Write-Host ('  OK MCP connector: ' + $name + ' -> ' + $desired[$name]); $now += $pair }}
             else {{ Write-Host ('  SKIP ' + $name + ': could not add (a server with this name may already exist)') }}
         }}
