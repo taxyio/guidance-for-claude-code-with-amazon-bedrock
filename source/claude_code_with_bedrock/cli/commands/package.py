@@ -3199,6 +3199,7 @@ echo "Installing authentication tools..."
 mkdir -p "$ACTUAL_HOME/claude-code-with-bedrock"
 
 # Copy appropriate binary
+rm -f "$ACTUAL_HOME/claude-code-with-bedrock/credential-process"  # fresh file: macOS SIGKILLs executables overwritten in place
 cp "$CREDENTIAL_BINARY" "$ACTUAL_HOME/claude-code-with-bedrock/credential-process"
 
 # Copy config
@@ -3370,6 +3371,7 @@ fi
 if [ -f "$OTEL_BINARY" ]; then
     echo
     echo "Installing OTEL helper..."
+    rm -f "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"  # fresh file: macOS SIGKILLs executables overwritten in place
     cp "$OTEL_BINARY" "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"
     chmod +x "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"; fi
@@ -3396,6 +3398,7 @@ if [ -f "collector-config.yaml" ] && [ -f "$OTELCOL_BINARY" ]; then
     echo "Installing OTEL Collector sidecar..."
 
     OTELCOL_DEST="$ACTUAL_HOME/claude-code-with-bedrock/otelcol"
+    rm -f "$OTELCOL_DEST"  # fresh file: macOS SIGKILLs executables overwritten in place
     cp "$OTELCOL_BINARY" "$OTELCOL_DEST"
     chmod +x "$OTELCOL_DEST"
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$OTELCOL_DEST"; fi
