@@ -34,6 +34,7 @@ from claude_code_with_bedrock.cli.utils.connectors import (
     has_gateway_connectors,
     windows_connectors_block,
 )
+from claude_code_with_bedrock.cli.utils.cowork_3p import MANUAL_INSTALL_SUFFIX
 from claude_code_with_bedrock.cli.utils.display import display_configuration_info
 from claude_code_with_bedrock.cli.utils.helpers import get_codebuild_region
 from claude_code_with_bedrock.cli.validators import validate_profile_for_packaging
@@ -3215,7 +3216,7 @@ fi
 # inferenceCredentialHelper) must be substituted here on the user's machine.
 for _ccwb_mdm in "cowork-3p.mobileconfig" "cowork-3p-config.json"; do
     if [ -f "$_ccwb_mdm" ] && grep -q "__CCWB_HOME__" "$_ccwb_mdm" 2>/dev/null; then
-        sed -i.bak "s|__CCWB_HOME__|$ACTUAL_HOME|g" "$_ccwb_mdm" && rm -f "$_ccwb_mdm.bak"
+        sed -i.bak -e "s|__CCWB_HOME__|$ACTUAL_HOME|g" -e "s|{MANUAL_INSTALL_SUFFIX}||g" "$_ccwb_mdm" && rm -f "$_ccwb_mdm.bak"
         if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$_ccwb_mdm"; fi
         echo "OK Resolved home directory in $_ccwb_mdm"
     fi
