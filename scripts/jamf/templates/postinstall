@@ -1,0 +1,30 @@
+#!/bin/bash
+# Runs as root via Jamf/Installer. install.sh is sudo-aware: setting SUDO_USER
+# makes it install into the console user's home and chown everything back.
+set -e
+
+PKG_DIR="__PKG_DIR__"
+
+console_user=$(stat -f%Su /dev/console)
+if [ -z "$console_user" ] || [ "$console_user" = "root" ] || [ "$console_user" = "_mbsetupuser" ]; then
+    echo "No user logged in — skipping install (re-run policy at next login)."
+    exit 1
+fi
+
+cd "$PKG_DIR"
+chmod +x install.sh
+# </dev/null: never block on the interactive merge-failure prompt in install.sh
+SUDO_USER="$console_user" ./install.sh < /dev/null
+
+# Azure client-certificate auth: the credential process expects the cert/key at
+# ~/claude-code-with-bedrock (client_certificate_path in the profile config).
+# Only present when the package was built with --cert-dir.
+if [ -f "$PKG_DIR/cert.pem" ] && [ -f "$PKG_DIR/key.pem" ]; then
+    user_home=$(eval echo "~$console_user")
+    for pem in cert.pem key.pem; do
+        cp "$PKG_DIR/$pem" "$user_home/claude-code-with-bedrock/$pem"
+        chown "$console_user" "$user_home/claude-code-with-bedrock/$pem"
+        chmod 600 "$user_home/claude-code-with-bedrock/$pem"
+    done
+    echo "OK Installed Azure client certificate and key"
+fi
