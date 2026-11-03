@@ -9,7 +9,7 @@
 ## Stack Deployment Order
 
 ```
-auth → networking → s3bucket → monitoring → dashboard → analytics → quota → [codebuild] → [distribution] → [bootstrap] → [websearch]
+auth → networking → s3bucket → monitoring → dashboard → analytics → quota → [codebuild] → [distribution] → [bootstrap] → [websearch] → [connectors]
 ```
 
 Stacks in `[]` are optional. Only `auth` is strictly required for basic Claude Code access.
@@ -368,6 +368,30 @@ IAM Identity Center handles authentication natively — no additional CloudForma
 
 **IAM actions required for deployment:**
 - `cloudformation:CreateStack` (deploys empty stack as marker)
+
+## connectors
+
+**Templates:** `connectors-gateway.yaml` (one stack) + `connectors-target.yaml` (one stack per gateway connector)
+**Required:** No (optional, for MCP connectors with per-user OAuth — see [CONNECTORS.md](CONNECTORS.md); OIDC only)
+
+| Resource Type | Service Namespace | Count |
+|---|---|---|
+| `AWS::BedrockAgentCore::Gateway` | `bedrock-agentcore` | 1 |
+| `AWS::BedrockAgentCore::ConsentPortal` | `bedrock-agentcore` | 1 |
+| `AWS::BedrockAgentCore::OAuth2CredentialProvider` | `bedrock-agentcore` | 1 + 1 per connector |
+| `AWS::BedrockAgentCore::GatewayTarget` | `bedrock-agentcore` | 1 per connector |
+| `AWS::S3::Bucket` / `AWS::S3::BucketPolicy` | `s3` | 1 / 1 |
+| `AWS::IAM::Role` | `iam` | 2 |
+
+Client secrets are read from Secrets Manager secrets you create under the `ccwb-connectors/` prefix.
+
+**IAM actions required for deployment:**
+- `bedrock-agentcore:CreateGateway`, `bedrock-agentcore:CreateGatewayTarget`, `bedrock-agentcore:CreateOauth2CredentialProvider`, `bedrock-agentcore:CreateConsentPortal` (and the matching Update/Delete/Get actions)
+- `s3:CreateBucket`, `s3:PutBucketPolicy`, `s3:PutObject` (tool schemas)
+- `secretsmanager:GetSecretValue` on `ccwb-connectors/*`
+- `iam:CreateRole`, `iam:PutRolePolicy`, `iam:PassRole`
+
+---
 
 ---
 

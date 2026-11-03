@@ -30,6 +30,7 @@ Once you have your IdP **provider domain** and **client ID**, follow one of thes
 - **[CLI_REFERENCE.md](./CLI_REFERENCE.md)** — Complete `ccwb` command reference
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Technical architecture details
 - **[LOCAL_TESTING.md](./LOCAL_TESTING.md)** — Testing before full deployment
+- **[CONNECTORS.md](./CONNECTORS.md)** — Distribute MCP connectors (Stripe, Taxy Workspace, ...) with per-user sign-in
 
 ## Operations
 

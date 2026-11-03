@@ -27,6 +27,13 @@ from claude_code_with_bedrock.models import (
 # paths use the native %USERPROFILE% env var instead.
 CCWB_HOME_PLACEHOLDER = "__CCWB_HOME__"
 
+# Appended to the .mobileconfig display names while __CCWB_HOME__ placeholders are
+# unresolved. Claude Desktop rejects such a profile ("Path must be absolute") if it
+# is pushed via MDM as-is, and the name is what admins see in Jamf / System
+# Settings. install.sh strips it when it resolves the placeholders locally; MDM
+# builds (scripts/jamf/build-jamf-pkg.sh) replace it with their own label.
+MANUAL_INSTALL_SUFFIX = " (manual install: run install.sh first; not for MDM)"
+
 # CoWork 3P tier aliases resolved by Claude Desktop itself. Fallback only — the
 # IDs Desktop picks may not exist in the deployment's region, so
 # derive_model_aliases() emits explicit CRIS IDs from the profile when it can.
@@ -271,6 +278,20 @@ def build_mdm_config(
         config.update(extra_keys)
 
     return config
+
+
+def add_beta_features(mdm_config: dict, profile) -> None:
+    """Per-feature managed keys (Chat tab, advanced file analysis, session lifetime).
+
+    Shared by 'ccwb package' and 'ccwb cowork generate' so both emit the same
+    configuration (cowork generate used to drop these, disabling the Chat tab).
+    """
+    if getattr(profile, "cowork_chat_tab_enabled", False):
+        mdm_config["chatTabEnabled"] = True
+    if getattr(profile, "cowork_chat_advanced_file_analysis", False):
+        mdm_config["chatAdvancedFileAnalysisEnabled"] = True
+    if getattr(profile, "cowork_inference_session_lifetime_sec", None):
+        mdm_config["inferenceSessionLifetimeSec"] = profile.cowork_inference_session_lifetime_sec
 
 
 def add_monitoring_config(mdm_config: dict, profile, console: Console) -> None:
@@ -561,6 +582,7 @@ def generate_mobileconfig(output_dir: Path, mdm_config: dict) -> Path:
         payload_items.append(f"\t\t\t<string>{xml_escape(string_value)}</string>")
 
     payload_content = "\n".join(payload_items)
+    suffix = MANUAL_INSTALL_SUFFIX if CCWB_HOME_PLACEHOLDER in payload_content else ""
 
     mobileconfig = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -576,14 +598,14 @@ def generate_mobileconfig(output_dir: Path, mdm_config: dict) -> Path:
 \t\t\t<key>PayloadIdentifier</key>
 \t\t\t<string>com.anthropic.claudefordesktop.config</string>
 \t\t\t<key>PayloadDisplayName</key>
-\t\t\t<string>Claude Cowork - Bedrock Configuration</string>
+\t\t\t<string>Claude Cowork - Bedrock Configuration{suffix}</string>
 \t\t\t<key>PayloadVersion</key>
 \t\t\t<integer>1</integer>
 {payload_content}
 \t\t</dict>
 \t</array>
 \t<key>PayloadDisplayName</key>
-\t<string>Claude Cowork with Amazon Bedrock</string>
+\t<string>Claude Cowork with Amazon Bedrock{suffix}</string>
 \t<key>PayloadIdentifier</key>
 \t<string>com.company.claude-cowork-bedrock</string>
 \t<key>PayloadType</key>

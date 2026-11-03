@@ -28,6 +28,13 @@ from claude_code_with_bedrock.cli.utils.coexistence import (
     windows_launcher_block,
     windows_migration_block,
 )
+from claude_code_with_bedrock.cli.utils.connectors import (
+    add_connectors_mcp_config,
+    bash_connectors_block,
+    has_gateway_connectors,
+    windows_connectors_block,
+)
+from claude_code_with_bedrock.cli.utils.cowork_3p import MANUAL_INSTALL_SUFFIX
 from claude_code_with_bedrock.cli.utils.display import display_configuration_info
 from claude_code_with_bedrock.cli.utils.helpers import get_codebuild_region
 from claude_code_with_bedrock.cli.validators import validate_profile_for_packaging
@@ -3025,7 +3032,7 @@ if [ -d "claude-settings" ] && [ -f "claude-settings/settings.json" ]; then
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/{claude_dir}/settings.json"; fi
     echo "✓ Claude Code settings installed"
 fi
-{coexist_migration_block}{zero_binary_launcher_block}
+{coexist_migration_block}{bash_connectors_block(profile)}{zero_binary_launcher_block}
 echo
 echo "======================================"
 echo "Installation complete!"
@@ -3165,7 +3172,8 @@ fi
         # {"Authorization":"Bearer <id_token>"} for Claude Desktop's
         # managedMcpServers headersHelper. Bound to this deployment profile.
         websearch_helper_block = ""
-        _ws_enabled = getattr(profile, "web_search_enabled", False)
+        # Also needed by the MCP connectors gateway (same id_token header).
+        _ws_enabled = getattr(profile, "web_search_enabled", False) or has_gateway_connectors(profile)
         _ws_auth = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", "oidc"))
         if _ws_enabled and _ws_auth != "idc":
             websearch_helper_block = f"""
@@ -3191,6 +3199,7 @@ echo "Installing authentication tools..."
 mkdir -p "$ACTUAL_HOME/claude-code-with-bedrock"
 
 # Copy appropriate binary
+rm -f "$ACTUAL_HOME/claude-code-with-bedrock/credential-process"  # fresh file: macOS SIGKILLs executables overwritten in place
 cp "$CREDENTIAL_BINARY" "$ACTUAL_HOME/claude-code-with-bedrock/credential-process"
 
 # Copy config
@@ -3208,7 +3217,7 @@ fi
 # inferenceCredentialHelper) must be substituted here on the user's machine.
 for _ccwb_mdm in "cowork-3p.mobileconfig" "cowork-3p-config.json"; do
     if [ -f "$_ccwb_mdm" ] && grep -q "__CCWB_HOME__" "$_ccwb_mdm" 2>/dev/null; then
-        sed -i.bak "s|__CCWB_HOME__|$ACTUAL_HOME|g" "$_ccwb_mdm" && rm -f "$_ccwb_mdm.bak"
+        sed -i.bak -e "s|__CCWB_HOME__|$ACTUAL_HOME|g" -e "s|{MANUAL_INSTALL_SUFFIX}||g" "$_ccwb_mdm" && rm -f "$_ccwb_mdm.bak"
         if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$_ccwb_mdm"; fi
         echo "OK Resolved home directory in $_ccwb_mdm"
     fi
@@ -3357,11 +3366,12 @@ with open('$ACTUAL_HOME/{claude_dir}/settings.json', 'w') as f:
         fi
     fi
 fi
-{coexist_migration_block}
+{coexist_migration_block}{bash_connectors_block(profile)}
 # Copy OTEL helper executable if present
 if [ -f "$OTEL_BINARY" ]; then
     echo
     echo "Installing OTEL helper..."
+    rm -f "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"  # fresh file: macOS SIGKILLs executables overwritten in place
     cp "$OTEL_BINARY" "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"
     chmod +x "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$ACTUAL_HOME/claude-code-with-bedrock/otel-helper"; fi
@@ -3388,6 +3398,7 @@ if [ -f "collector-config.yaml" ] && [ -f "$OTELCOL_BINARY" ]; then
     echo "Installing OTEL Collector sidecar..."
 
     OTELCOL_DEST="$ACTUAL_HOME/claude-code-with-bedrock/otelcol"
+    rm -f "$OTELCOL_DEST"  # fresh file: macOS SIGKILLs executables overwritten in place
     cp "$OTELCOL_BINARY" "$OTELCOL_DEST"
     chmod +x "$OTELCOL_DEST"
     if [ -n "$SUDO_USER" ]; then chown "$ACTUAL_USER" "$OTELCOL_DEST"; fi
@@ -3632,7 +3643,8 @@ echo
         # absolute — Claude reads it literally — handled via __CCWB_HOME__ in the
         # .reg, resolved by the cowork-3p.reg substitution block below.)
         windows_websearch_block = ""
-        _ws_enabled = getattr(profile, "web_search_enabled", False)
+        # Also needed by the MCP connectors gateway (same id_token header).
+        _ws_enabled = getattr(profile, "web_search_enabled", False) or has_gateway_connectors(profile)
         _ws_auth = getattr(profile, "effective_auth_type", getattr(profile, "auth_type", "oidc"))
         if _ws_enabled and _ws_auth != "idc":
             windows_websearch_block = f"""
@@ -3848,7 +3860,7 @@ if exist "claude-settings" (
         )
     )
 )
-{win_coexist_migration_block}
+{win_coexist_migration_block}{windows_connectors_block(profile)}
 REM Configure AWS profiles
 echo.
 echo Configuring AWS profiles...
@@ -4522,6 +4534,7 @@ This package installs Amazon Bedrock **next to** your existing Claude Code:
         consistency with the standalone 'ccwb cowork generate' command.
         """
         from claude_code_with_bedrock.cli.utils.cowork_3p import (
+            add_beta_features,
             add_monitoring_config,
             add_websearch_mcp_config,
             build_mdm_config,
@@ -4544,16 +4557,11 @@ This package installs Amazon Bedrock **next to** your existing Claude Code:
                 credential_helper_ttl_sec=getattr(profile, "cowork_credential_helper_ttl_sec", 3500),
             )
 
-            # Beta features (per-feature managed configuration keys)
-            if getattr(profile, "cowork_chat_tab_enabled", False):
-                mdm_config["chatTabEnabled"] = True
-            if getattr(profile, "cowork_chat_advanced_file_analysis", False):
-                mdm_config["chatAdvancedFileAnalysisEnabled"] = True
-            if getattr(profile, "cowork_inference_session_lifetime_sec", None):
-                mdm_config["inferenceSessionLifetimeSec"] = profile.cowork_inference_session_lifetime_sec
+            add_beta_features(mdm_config, profile)
 
             add_monitoring_config(mdm_config, profile, console)
             add_websearch_mcp_config(mdm_config, profile, console)
+            add_connectors_mcp_config(mdm_config, profile, console)
             generate_all(output_dir, mdm_config, console)
 
         except Exception as e:

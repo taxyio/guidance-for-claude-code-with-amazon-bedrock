@@ -266,6 +266,22 @@ Repeat for more test users if needed.
 6. Select your test users
 7. Click **Assign**
 
+### Step 7.2: Require assignment (do not skip)
+
+By default, Entra ID issues tokens for this app to **every user in the tenant**, assigned or not. AWS federation, the web search gateway and the connectors gateway only check that the token was issued for this app, so the assignments in Step 7.1 restrict nothing until you require them:
+
+1. In the same Enterprise application, open **Properties**
+2. Set **Assignment required?** to **Yes**
+3. Click **Save**
+
+Or with the Azure CLI:
+
+```bash
+az ad sp update --id <application-client-id> --set appRoleAssignmentRequired=true
+```
+
+Unassigned users then get `AADSTS50105` at sign-in and on their next token refresh, and can no longer obtain Bedrock credentials. Credentials already issued stay valid until they expire. To grant access by group instead of by user, assign groups in Step 7.1; this requires Entra ID P1 or P2.
+
 ---
 
 ## 8. Collect Required Information

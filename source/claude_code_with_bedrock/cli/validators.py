@@ -74,6 +74,22 @@ def validate_profile_for_packaging(profile) -> list[ValidationError]:
                 )
             )
 
+    # Remote MCP connectors: names/URLs are spliced into installer scripts.
+    from claude_code_with_bedrock.cli.utils.connectors import (
+        ConnectorConfigError,
+        validate_connectors,
+        windows_connectors_block,
+    )
+
+    connector_problems = validate_connectors(profile)
+    for severity, message in connector_problems:
+        errors.append(ValidationError("connectors", message, severity=severity))
+    if not any(sev == "error" for sev, _ in connector_problems):
+        try:
+            windows_connectors_block(profile)
+        except ConnectorConfigError as e:
+            errors.append(ValidationError("connectors", str(e)))
+
     # Bootstrap server + IDC conflict
     if getattr(profile, "cowork_config_mode", "static") == "dynamic" and auth_type == "idc":
         errors.append(

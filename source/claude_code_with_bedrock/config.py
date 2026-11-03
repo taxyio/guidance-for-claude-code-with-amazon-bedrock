@@ -201,6 +201,17 @@ class Profile:
     websearch_domain_denylist: list[str] = field(default_factory=list)  # Optional domains to exclude from results
     websearch_headers_helper_path: str = ""  # Absolute path override for the Cowork headersHelper (default: ~/claude-code-with-bedrock/websearch-headers)
 
+    # Remote MCP connectors (see cli/utils/connectors.py). Items are preset names
+    # ("stripe", "taxy-workspace") or {"name", "url", "surfaces"} dicts. Each user
+    # signs in to the vendor with their own account; no secrets are distributed.
+    # Installed at user scope for Claude Code and as managedMcpServers for Cowork.
+    connectors: list[Any] = field(default_factory=list)
+    # AgentCore Gateway for connectors that need a vendor client secret (items with
+    # "via": "gateway"). Keys: portal_client_secret_arn, portal_scopes, region,
+    # server_name; gateway_url / portal_url / deployed are written by
+    # 'ccwb deploy connectors'. Empty = no gateway.
+    connectors_gateway: dict[str, Any] = field(default_factory=dict)
+
     # Admin-only extra files copied into the package on top of generated artifacts.
     # Consumed ONLY by `package`/`distribute` — deliberately NOT mirrored in the Go
     # ProfileConfig (config-sync.md) and NOT written to the runtime config.json.

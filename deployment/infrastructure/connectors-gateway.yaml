@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Amazon Bedrock AgentCore Gateway for Claude MCP connectors (Slack, HubSpot,
+  Google, ...) with per-user OAuth. Users reach the gateway with their existing
+  OIDC id_token (CUSTOM_JWT). On first use of a connector the gateway returns an
+  MCP URL elicitation; the user consents at the vendor and the AgentCore consent
+  portal binds that consent to their OIDC identity. Vendor tokens are stored per
+  user in the AgentCore Identity token vault; vendor client secrets stay in AWS
+  Secrets Manager. Connector targets are deployed as separate stacks from
+  connectors-target.yaml.
+
+Parameters:
+  DiscoveryUrl:
+    Type: String
+    AllowedPattern: '^https://.+/\.well-known/openid-configuration$'
+    Description: >-
+      OIDC discovery URL of the IdP users sign in with (same issuer as the
+      id_token the credential-process emits).
+
+  ClientId:
+    Type: String
+    MinLength: 1
+    Description: >-
+      OIDC app client ID. The gateway validates the id_token 'aud' against it,
+      and the consent portal signs users in with the same app so both see the
+      same user identity.
+
+  PortalClientSecretArn:
+    Type: String
+    AllowedPattern: '^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$'
+    Description: >-
+      Secrets Manager secret holding the OIDC app client secret used by the
+      consent portal (JSON key given by PortalClientSecretJsonKey).
+
+  PortalClientSecretJsonKey:
+    Type: String
+    Default: client_secret
+    Description: JSON key in PortalClientSecretArn that holds the client secret.
+
+  PortalScopes:
+    Type: CommaDelimitedList
+    Default: 'openid,profile,email'
+    Description: >-
+      Scopes the consent portal requests. The IdP must issue a JWT access
+      token for them (Entra ID: add api://<client-id>/<scope>).
+
+Resources:
+  # Tool schemas for connector targets (supplied up front: with per-user OAuth
+  # the gateway cannot list a vendor's tools on its own).
+  ToolSchemaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ToolSchemaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ToolSchemaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt ToolSchemaBucket.Arn
+              - !Sub '${ToolSchemaBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  GatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref 'AWS::AccountId'
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*'
+      Policies:
+        - PolicyName: connectors-gateway
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Gateway
+                Effect: Allow
+                Action: bedrock-agentcore:GetGateway
+                Resource: !Sub 'arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*'
+              - Sid: OutboundOAuth
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:GetResourceOauth2Token
+                Resource: '*'
+              - Sid: VendorClientSecrets
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bedrock-agentcore-identity!default/oauth2/*'
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:ccwb-connectors/*'
+              - Sid: ToolSchemas
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${ToolSchemaBucket.Arn}/*'
+
+  Gateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub '${AWS::StackName}-gw'
+      Description: Claude MCP connectors (per-user OAuth)
+      RoleArn: !GetAtt GatewayRole.Arn
+      ProtocolType: MCP
+      ProtocolConfiguration:
+        Mcp:
+          # 2025-11-25 is required for URL elicitation (consent links).
+          SupportedVersions:
+            - '2025-03-26'
+            - '2025-06-18'
+            - '2025-11-25'
+          SessionConfiguration:
+            SessionTimeoutInSeconds: 3600
+          StreamingConfiguration:
+            EnableResponseStreaming: true
+      AuthorizerType: CUSTOM_JWT
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Ref DiscoveryUrl
+          AllowedAudience:
+            - !Ref ClientId
+
+  # OIDC app the consent portal signs users in with (must share the gateway
+  # authorizer's issuer).
+  PortalIdpProvider:
+    Type: AWS::BedrockAgentCore::OAuth2CredentialProvider
+    Properties:
+      Name: !Sub '${AWS::StackName}-idp'
+      CredentialProviderVendor: CustomOauth2
+      Oauth2ProviderConfigInput:
+        CustomOauth2ProviderConfig:
+          OauthDiscovery:
+            DiscoveryUrl: !Ref DiscoveryUrl
+          ClientId: !Ref ClientId
+          ClientSecretSource: EXTERNAL
+          ClientSecretConfig:
+            SecretId: !Ref PortalClientSecretArn
+            JsonKey: !Ref PortalClientSecretJsonKey
+          ClientAuthenticationMethod: CLIENT_SECRET_POST
+
+  PortalRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref 'AWS::AccountId'
+      Policies:
+        - PolicyName: consent-portal
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetGateway
+                  - bedrock-agentcore:GetGatewayTarget
+                  - bedrock-agentcore:ListGatewayTargets
+                Resource: !GetAtt Gateway.GatewayArn
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetOauth2CredentialProvider
+                  - bedrock-agentcore:ListOauth2CredentialProviders
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default/oauth2credentialprovider/*'
+                  - !Sub 'arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:CompleteResourceTokenAuth
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                Resource: '*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref PortalClientSecretArn
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bedrock-agentcore-identity!default/oauth2/*'
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:ccwb-connectors/*'
+
+  ConsentPortal:
+    Type: AWS::BedrockAgentCore::ConsentPortal
+    # Newer than the resource spec bundled with current cfn-lint.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [E3006]
+    Properties:
+      Name: !Sub '${AWS::StackName}-portal'
+      Description: Connect your accounts for Claude connectors
+      ExecutionRoleArn: !GetAtt PortalRole.Arn
+      IdpConfig:
+        CredentialProviderArn: !GetAtt PortalIdpProvider.CredentialProviderArn
+        Scopes: !Ref PortalScopes
+      Sources:
+        - Identifier: !GetAtt Gateway.GatewayArn
+          Type: agentcore-gateway
+
+Outputs:
+  GatewayMcpEndpoint:
+    Description: MCP endpoint of the connectors gateway (includes /mcp).
+    Value: !GetAtt Gateway.GatewayUrl
+  GatewayId:
+    Value: !GetAtt Gateway.GatewayIdentifier
+  PortalUrl:
+    Description: >-
+      Consent portal. Register <PortalUrl>/callback as a redirect URI on the
+      OIDC app; users can also connect accounts here up front.
+    Value: !GetAtt ConsentPortal.PortalUrl
+  PortalCallbackUrl:
+    Value: !Sub '${ConsentPortal.PortalUrl}/callback'
+  ToolSchemaBucket:
+    Value: !Ref ToolSchemaBucket

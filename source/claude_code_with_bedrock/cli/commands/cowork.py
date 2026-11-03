@@ -10,7 +10,9 @@ from cleo.helpers import option
 from rich.console import Console
 from rich.panel import Panel
 
+from claude_code_with_bedrock.cli.utils.connectors import add_connectors_mcp_config
 from claude_code_with_bedrock.cli.utils.cowork_3p import (
+    add_beta_features,
     add_monitoring_config,
     add_websearch_mcp_config,
     build_mdm_config,
@@ -123,11 +125,17 @@ class CoworkGenerateCommand(Command):
             credential_helper_ttl_sec=getattr(profile, "cowork_credential_helper_ttl_sec", 3500),
         )
 
+        # Beta features (Chat tab, ...) — same keys as 'ccwb package'
+        add_beta_features(mdm_config, profile)
+
         # Add monitoring OTLP endpoint if available
         add_monitoring_config(mdm_config, profile, console)
 
         # Add the AgentCore web search gateway as a managed MCP server (if enabled)
         add_websearch_mcp_config(mdm_config, profile, console)
+
+        # Add remote MCP connectors (Stripe, Taxy Workspace, ...)
+        add_connectors_mcp_config(mdm_config, profile, console)
 
         # Generate requested formats
         generated = []
