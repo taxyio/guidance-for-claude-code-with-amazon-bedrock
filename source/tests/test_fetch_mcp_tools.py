@@ -94,3 +94,19 @@ def test_oauth_surfaces_vendor_error():
     with patch.object(fetch.webbrowser, "open", _browser(error="access_denied")):
         with pytest.raises(RuntimeError, match="access_denied"):
             fetch.oauth_token("https://v/authorize", "http://127.0.0.1:1/token", "c", "s", "", redirect, timeout=10)
+
+
+def test_redact_drops_only_sentences_naming_the_user():
+    tool = {
+        "name": "slack_search_public",
+        "description": "Searches public channels. Current logged in user's user_id is U09C902J8R1.\nTips: be specific.",
+        "inputSchema": {"properties": {"user_id": {"description": "Slack user ID (e.g., 'U0ABC12345')."}}},
+    }
+    out = fetch.redact({"tools": [tool]}, ["U09C902J8R1"])["tools"][0]
+    assert out["description"] == "Searches public channels.\nTips: be specific."
+    assert out["inputSchema"] == tool["inputSchema"]  # untouched (example ID, not the user's)
+
+
+def test_redact_is_noop_without_values():
+    data = {"tools": [{"name": "t", "description": "Your user_id: U1."}]}
+    assert fetch.redact(data, []) == data

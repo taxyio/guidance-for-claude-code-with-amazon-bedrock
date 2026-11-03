@@ -125,6 +125,7 @@ With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each ta
     --token-url https://mcp.hubspot.com/oauth/v3/token \
     --client-id <client-id> --client-secret-file ./hubspot-secret.txt
   ```
+- **Redact personal details.** Some vendors write the signed-in user into tool descriptions; Slack, for example, adds "the current logged in user's user_id is U…". The schema is shared by every user, so pass `--redact <your-user-id>` when capturing. Otherwise every user's Claude believes it is you, and "message me" would DM you. A test fails if a bundled schema names a user.
 - Re-capture when a vendor adds tools, then re-run `ccwb deploy connectors`.
 
 ### Vendor setup

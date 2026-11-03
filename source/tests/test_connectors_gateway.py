@@ -496,3 +496,15 @@ class TestTemplates:
         assert oauth["DefaultReturnUrl"] == {"Fn::Sub": "${PortalUrl}/connect/callback"}
         assert "McpToolSchema" in r["Target"]["Properties"]["TargetConfiguration"]["Mcp"]["McpServer"]
         assert t["Parameters"]["ClientSecretArn"]["AllowedPattern"].endswith("secret:ccwb-connectors/.+$")
+
+
+@pytest.mark.parametrize("schema", sorted((REPO / "deployment/infrastructure/connector-tool-schemas").glob("*.json")))
+def test_bundled_schemas_are_not_personalised(schema):
+    """Vendors may personalise tool descriptions for the capturing user (Slack embeds the
+    signed-in user's ID). A shared schema must not, or every user's Claude acts as that
+    person (e.g. "message me" DMs the admin). Capture with fetch-mcp-tools.py --redact."""
+    import re
+
+    text = schema.read_text(encoding="utf-8")
+    personal = re.findall(r"(?:logged in user'?s (?:Slack )?user_id is|Your user_id:)\s*U[0-9A-Z]{6,}", text)
+    assert not personal, f"{schema.name} names the capturing user: {personal}"

@@ -11,6 +11,11 @@ user token from the Slack app's "OAuth & Permissions" page), or let the script
 sign you in with --oauth (authorization code + PKCE against a local callback,
 http://127.0.0.1:<port>/callback by default; add that redirect URI to the
 vendor's OAuth app temporarily). The token is kept in memory only.
+
+Some servers personalise tool descriptions for the signed-in user (Slack embeds
+"the current logged in user's user_id is U..."). The schema is shared by every
+user, so pass --redact <value> (e.g. your Slack user ID) to drop each sentence
+that mentions it; otherwise every user's Claude would believe it is you.
 """
 
 import argparse
@@ -74,6 +79,30 @@ def fetch_tools(url, token=None):
         cursor = result.get("nextCursor")
         if not cursor:
             return tools
+
+
+def redact(obj, values):
+    """Drop every sentence that mentions one of ``values`` from all strings in ``obj``."""
+    import re
+
+    if not values:
+        return obj
+    if isinstance(obj, dict):
+        return {k: redact(v, values) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redact(v, values) for v in obj]
+    if isinstance(obj, str) and any(v in obj for v in values):
+        # A sentence ends at ". ", "\n" or end of string; keep the separators of kept sentences.
+        parts = re.split(r"(?<=[.!?])[ \t]+|(\n)", obj)
+        kept, out = [p for p in parts if p is not None], []
+        for p in kept:
+            if p == "\n" or not any(v in p for v in values):
+                out.append(p)
+        text = ""
+        for p in out:
+            text += p if p == "\n" or not text or text.endswith("\n") else " " + p
+        return re.sub(r"\n{3,}", "\n\n", text).strip()
+    return obj
 
 
 def oauth_token(authorize_url, token_url, client_id, client_secret, scope, redirect_uri, timeout=300):
@@ -153,6 +182,13 @@ def main():
     ap.add_argument("--client-secret-file", help="file containing only the client secret")
     ap.add_argument("--scope", default="", help="space-separated scopes")
     ap.add_argument("--redirect-uri", default="http://127.0.0.1:8765/callback")
+    ap.add_argument(
+        "--redact",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="drop sentences mentioning VALUE (e.g. your Slack user ID); repeatable",
+    )
     a = ap.parse_args()
     token = a.token
     try:
@@ -165,7 +201,7 @@ def main():
             with open(a.client_secret_file, encoding="utf-8") as f:
                 secret = f.read().strip()
             token = oauth_token(a.authorize_url, a.token_url, a.client_id, secret, a.scope, a.redirect_uri)
-        tools = fetch_tools(a.url, token)
+        tools = redact(fetch_tools(a.url, token), a.redact)
     except (urllib.error.URLError, RuntimeError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
