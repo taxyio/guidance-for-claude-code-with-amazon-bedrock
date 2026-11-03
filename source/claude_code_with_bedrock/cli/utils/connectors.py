@@ -62,6 +62,9 @@ ALL_SURFACES = (SURFACE_CLAUDE_CODE, SURFACE_COWORK)
 PRESETS: dict[str, str] = {
     "stripe": "https://mcp.stripe.com",
     "taxy-workspace": "https://mcp.workspace.taxy.io/mcp",
+    "atlassian": "https://mcp.atlassian.com/v1/mcp",  # Jira + Confluence (Atlassian Rovo MCP server)
+    "amplitude": "https://mcp.amplitude.com/mcp",  # Amplitude US data center
+    "amplitude-eu": "https://mcp.eu.amplitude.com/mcp",  # Amplitude EU data center
 }
 
 STATE_FILE_NAME = "connectors-managed.txt"

@@ -73,6 +73,18 @@ class TestProfile:
         again = Profile.from_dict(p.to_dict())
         assert again.connectors == p.connectors
 
+    @pytest.mark.parametrize(
+        "preset, url",
+        [
+            ("atlassian", "https://mcp.atlassian.com/v1/mcp"),
+            ("amplitude", "https://mcp.amplitude.com/mcp"),
+            ("amplitude-eu", "https://mcp.eu.amplitude.com/mcp"),
+        ],
+    )
+    def test_atlassian_and_amplitude_presets(self, preset, url):
+        (c,) = resolve_connectors(_profile([preset]))
+        assert (c.name, c.url, c.surfaces) == (preset, url, ("claude-code", "cowork"))
+
     def test_presets_resolve(self):
         cs = resolve_connectors(_profile(["stripe", "Taxy-Workspace"]))
         assert [(c.name, c.url) for c in cs] == [("stripe", STRIPE), ("taxy-workspace", TAXY)]

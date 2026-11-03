@@ -6,7 +6,7 @@ There are two kinds of connector:
 
 | | Direct | Gateway |
 |---|---|---|
-| For | Vendor MCP servers with OAuth **Dynamic Client Registration** (Stripe, Taxy Workspace) | Vendor MCP servers that need a pre-registered OAuth app **with a client secret** (Slack, HubSpot, Google) |
+| For | Vendor MCP servers with OAuth **Dynamic Client Registration** (Stripe, Taxy Workspace, Atlassian, Amplitude) | Vendor MCP servers that need a pre-registered OAuth app **with a client secret** (Slack, HubSpot, Google) |
 | Infrastructure | None | Amazon Bedrock AgentCore Gateway + consent portal (`ccwb deploy connectors`) |
 | Where user tokens live | On the device (Claude Code / Claude Desktop) | AgentCore Identity token vault (per user) |
 | Client secrets | None | AWS Secrets Manager only |
@@ -28,6 +28,9 @@ Add presets or custom servers to the profile (`~/.ccwb/profiles/<profile>.json`)
 |--------|-----|
 | `stripe` | `https://mcp.stripe.com` |
 | `taxy-workspace` | `https://mcp.workspace.taxy.io/mcp` |
+| `atlassian` | `https://mcp.atlassian.com/v1/mcp` (Jira, Confluence) |
+| `amplitude` | `https://mcp.amplitude.com/mcp` (US data center) |
+| `amplitude-eu` | `https://mcp.eu.amplitude.com/mcp` (EU data center) |
 
 Custom entries need a `name` (lowercase letters, digits, `-`) and an `https://` `url`. `surfaces` is optional and defaults to `["claude-code", "cowork"]`. Only add servers that support Dynamic Client Registration. To check, look for `registration_endpoint` in the vendor's `/.well-known/oauth-authorization-server` metadata.
 
