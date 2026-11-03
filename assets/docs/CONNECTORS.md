@@ -133,6 +133,8 @@ With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each ta
 | `hubspot` | HubSpot developer account: create an **MCP auth app** with the `CallbackUrl` as its redirect URL. Scopes are configured on the app. | Bundled (30 tools) |
 | `taxy-workspace` (gateway variant) | Register a client via Dynamic Client Registration (`POST https://login.taxy.io/oidc/register`) with the `CallbackUrl` as its redirect URI | Bundled |
 
+If a vendor reports that the redirect URL doesn't match right after you registered it, request a **new** sign-in link: links created before the change was saved (or before the vendor applied it) keep failing. This happened with HubSpot during testing.
+
 Credential providers are created with the `client_id` you configure. If a vendor only issues a client after you register the redirect URI, deploy with a placeholder `client_id` and a placeholder secret, register the printed `CallbackUrl`, then update the secret and `client_id` and redeploy. The `CallbackUrl` stays the same across updates.
 
 ## Installer behavior (Claude Code)
