@@ -110,7 +110,7 @@ Re-running `ccwb deploy connectors` updates changed connectors and removes stack
 
 With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each target is therefore created with its tool list up front, stored in S3. As a result, creating or updating a connector needs no admin sign-in.
 
-- **Bundled:** `google-drive`, `google-docs`, `google-sheets` and `taxy-workspace`, in `deployment/infrastructure/connector-tool-schemas/`.
+- **Bundled:** `slack`, `hubspot`, `google-drive`, `google-docs`, `google-sheets` and `taxy-workspace`, in `deployment/infrastructure/connector-tool-schemas/`.
 - **Captured:** for other vendors, use a user token you already have:
   ```bash
   scripts/fetch-mcp-tools.py <mcp-url> slack-tools.json --token <user-access-token>
@@ -129,8 +129,8 @@ With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each ta
 | Preset | OAuth app | Tool schema |
 |---|---|---|
 | `google-drive` / `google-docs` / `google-sheets` | Google Cloud: OAuth consent screen **Internal**, client type **Web application**, one redirect URI per connector `CallbackUrl`. One client can serve all three; they can share the same secret ARN. | Bundled |
-| `slack` | api.slack.com/apps: create an app, then under *OAuth & Permissions* add the `CallbackUrl` as a redirect URL and the preset's **User Token Scopes**. ⚠️ Not yet verified end to end. | Install the app to your workspace, then use its User OAuth Token (`xoxp-…`) with `fetch-mcp-tools.py` |
-| `hubspot` | HubSpot developer account: create an MCP auth app with the `CallbackUrl` as its redirect URL. ⚠️ Not yet verified end to end. | Capture with a user access token |
+| `slack` | api.slack.com/apps: create an app; under *Agents*, turn on **Slack Model Context Protocol (MCP) Server**; under *OAuth & Permissions*, add the preset's **User Token Scopes** (all 30 scopes Slack's MCP server supports) and the `CallbackUrl` as a redirect URL. | Bundled (27 tools, read and write). For read-only, override `scopes` and pass a `tool_schema` without the write tools |
+| `hubspot` | HubSpot developer account: create an **MCP auth app** with the `CallbackUrl` as its redirect URL. Scopes are configured on the app. | Bundled (30 tools) |
 | `taxy-workspace` (gateway variant) | Register a client via Dynamic Client Registration (`POST https://login.taxy.io/oidc/register`) with the `CallbackUrl` as its redirect URI | Bundled |
 
 Credential providers are created with the `client_id` you configure. If a vendor only issues a client after you register the redirect URI, deploy with a placeholder `client_id` and a placeholder secret, register the printed `CallbackUrl`, then update the secret and `client_id` and redeploy. The `CallbackUrl` stays the same across updates.

@@ -131,9 +131,22 @@ class TestParsing:
         with pytest.raises(ConnectorConfigError, match=match):
             resolve_gateway_connectors(_profile([_gw(**override)]))
 
-    def test_preset_without_bundled_schema_requires_tool_schema(self):
+    def test_custom_connector_requires_tool_schema(self):
+        item = {
+            "via": "gateway",
+            "name": "acme",
+            "url": "https://mcp.acme.example/mcp",
+            "client_id": "c",
+            "client_secret_arn": SECRET,
+            "discovery_url": "https://login.acme.example/.well-known/openid-configuration",
+        }
         with pytest.raises(ConnectorConfigError, match="tool_schema"):
-            resolve_gateway_connectors(_profile([_gw("hubspot")]))
+            resolve_gateway_connectors(_profile([item]))
+
+    def test_slack_preset_scopes_cover_bundled_tools(self):
+        (c,) = resolve_gateway_connectors(_profile([_gw("slack")]))
+        assert c.tool_schema == "slack.json"
+        assert {"chat:write", "canvases:write", "lists:write", "files:write", "reactions:write"} <= set(c.scopes)
 
     def test_custom_gateway_connector_needs_auth_server(self):
         item = {
@@ -361,7 +374,9 @@ class TestDeployHelpers:
         required = {k for k, v in template["Parameters"].items() if "Default" not in v}
         assert required <= keys <= set(template["Parameters"])
 
-    @pytest.mark.parametrize("preset", ["google-drive", "google-docs", "google-sheets", "taxy-workspace"])
+    @pytest.mark.parametrize(
+        "preset", ["google-drive", "google-docs", "google-sheets", "taxy-workspace", "slack", "hubspot"]
+    )
     def test_bundled_schemas_load(self, preset):
         (c,) = resolve_gateway_connectors(_profile([_gw(preset)]))
         data = load_tool_schema(c, REPO)
@@ -375,7 +390,7 @@ class TestDeployHelpers:
     def test_invalid_schema_rejected(self, tmp_path):
         bad = tmp_path / "s.json"
         bad.write_text('{"tools": []}')
-        (c,) = resolve_gateway_connectors(_profile([_gw("hubspot", tool_schema=str(bad))]))
+        (c,) = resolve_gateway_connectors(_profile([_gw("slack", tool_schema=str(bad))]))
         with pytest.raises(ConnectorConfigError, match="named tools"):
             load_tool_schema(c, REPO)
 
