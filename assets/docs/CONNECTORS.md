@@ -6,7 +6,7 @@ There are two kinds of connector:
 
 | | Direct | Gateway |
 |---|---|---|
-| For | Vendor MCP servers with OAuth **Dynamic Client Registration** (Stripe, Taxy Workspace, Atlassian, Amplitude) | Vendor MCP servers that need a pre-registered OAuth app **with a client secret** (Slack, HubSpot, Google) |
+| For | Vendor MCP servers with OAuth **Dynamic Client Registration** (Stripe, Taxy Workspace, Atlassian, Amplitude) | Vendor MCP servers that need a pre-registered OAuth app **with a client secret** (Slack, HubSpot, Google Drive/Docs/Sheets/Gmail) |
 | Infrastructure | None | Amazon Bedrock AgentCore Gateway + consent portal (`ccwb deploy connectors`) |
 | Where user tokens live | On the device (Claude Code / Claude Desktop) | AgentCore Identity token vault (per user) |
 | Client secrets | None | AWS Secrets Manager only |
@@ -113,7 +113,7 @@ Re-running `ccwb deploy connectors` updates changed connectors and removes stack
 
 With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each target is therefore created with its tool list up front, stored in S3. As a result, creating or updating a connector needs no admin sign-in.
 
-- **Bundled:** `slack`, `hubspot`, `google-drive`, `google-docs`, `google-sheets` and `taxy-workspace`, in `deployment/infrastructure/connector-tool-schemas/`.
+- **Bundled:** `slack`, `hubspot`, `google-drive`, `google-docs`, `google-sheets`, `google-gmail` and `taxy-workspace`, in `deployment/infrastructure/connector-tool-schemas/`.
 - **Captured:** for other vendors, use a user token you already have:
   ```bash
   scripts/fetch-mcp-tools.py <mcp-url> slack-tools.json --token <user-access-token>
@@ -132,7 +132,7 @@ With per-user OAuth, the gateway cannot list a vendor's tools by itself. Each ta
 
 | Preset | OAuth app | Tool schema |
 |---|---|---|
-| `google-drive` / `google-docs` / `google-sheets` | Google Cloud: OAuth consent screen **Internal**, client type **Web application**, one redirect URI per connector `CallbackUrl`. One client can serve all three; they can share the same secret ARN. | Bundled |
+| `google-drive` / `google-docs` / `google-sheets` / `google-gmail` | Google Cloud: OAuth consent screen **Internal**, client type **Web application**, one redirect URI per connector `CallbackUrl`. One client can serve all three; they can share the same secret ARN. | Bundled |
 | `slack` | api.slack.com/apps: create an app; under *Agents*, turn on **Slack Model Context Protocol (MCP) Server**; under *OAuth & Permissions*, add the preset's **User Token Scopes** (all 30 scopes Slack's MCP server supports) and the `CallbackUrl` as a redirect URL. | Bundled (27 tools, read and write). For read-only, override `scopes` and pass a `tool_schema` without the write tools |
 | `hubspot` | HubSpot developer account: create an **MCP auth app** with the `CallbackUrl` as its redirect URL. Scopes are configured on the app. | Bundled (30 tools) |
 | `taxy-workspace` (gateway variant) | Register a client via Dynamic Client Registration (`POST https://login.taxy.io/oidc/register`) with the `CallbackUrl` as its redirect URI | Bundled |

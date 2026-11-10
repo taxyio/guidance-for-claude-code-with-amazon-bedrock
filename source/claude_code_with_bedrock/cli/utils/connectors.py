@@ -164,6 +164,17 @@ GATEWAY_PRESETS: dict[str, dict] = {
         "auth_params": {"access_type": "offline", "prompt": "consent"},
         "tool_schema": "google-sheets.json",
     },
+    "google-gmail": {
+        "description": "Gmail",
+        "url": "https://gmailmcp.googleapis.com/mcp/v1",
+        "discovery_url": "https://accounts.google.com/.well-known/openid-configuration",
+        # gmail.modify: read, label, trash, spam (no permanent delete); gmail.drafts:
+        # drafts only. Gmail's MCP server has no send tool; gmail.send / mail.google.com
+        # are deliberately not requested.
+        "scopes": ["https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/gmail.drafts"],
+        "auth_params": {"access_type": "offline", "prompt": "consent"},
+        "tool_schema": "google-gmail.json",
+    },
     "taxy-workspace": {
         "description": "Taxy Workspace",
         "url": "https://mcp.workspace.taxy.io/mcp",

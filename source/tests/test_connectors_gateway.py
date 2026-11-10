@@ -95,6 +95,12 @@ class TestParsing:
         assert dict(c.auth_params) == {"access_type": "offline", "prompt": "consent"}
         assert c.tool_schema == "google-sheets.json"
 
+    def test_gmail_preset_cannot_send_or_hard_delete(self):
+        (c,) = resolve_gateway_connectors(_profile([_gw("google-gmail")]))
+        assert c.url == "https://gmailmcp.googleapis.com/mcp/v1"
+        assert not {"https://mail.google.com/", "https://www.googleapis.com/auth/gmail.send"} & set(c.scopes)
+        assert dict(c.auth_params)["access_type"] == "offline"
+
     def test_slack_preset_uses_user_token_endpoints(self):
         (c,) = resolve_gateway_connectors(_profile([_gw("slack", tool_schema="/tmp/slack.json")]))
         assert c.authorization_endpoint == "https://slack.com/oauth/v2_user/authorize"
@@ -375,7 +381,7 @@ class TestDeployHelpers:
         assert required <= keys <= set(template["Parameters"])
 
     @pytest.mark.parametrize(
-        "preset", ["google-drive", "google-docs", "google-sheets", "taxy-workspace", "slack", "hubspot"]
+        "preset", ["google-drive", "google-docs", "google-sheets", "google-gmail", "taxy-workspace", "slack", "hubspot"]
     )
     def test_bundled_schemas_load(self, preset):
         (c,) = resolve_gateway_connectors(_profile([_gw(preset)]))
