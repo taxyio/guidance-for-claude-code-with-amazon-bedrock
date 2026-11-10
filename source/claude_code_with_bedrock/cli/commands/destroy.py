@@ -11,6 +11,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm
 
 from claude_code_with_bedrock.cli.utils.cloudformation import CloudFormationManager
+from claude_code_with_bedrock.cli.utils.connectors import has_gateway_connectors
+from claude_code_with_bedrock.cli.utils.connectors_deploy import base_stack_name as connectors_base_stack_name
+from claude_code_with_bedrock.cli.utils.connectors_deploy import destroy_connectors
 from claude_code_with_bedrock.cli.utils.helpers import clear_cached_credentials, get_codebuild_region
 from claude_code_with_bedrock.config import WEBSEARCH_SUPPORTED_REGIONS, Config
 
@@ -21,6 +24,7 @@ from claude_code_with_bedrock.config import WEBSEARCH_SUPPORTED_REGIONS, Config
 DESTROYABLE_STACKS = [
     "bootstrap",  # Leaf: device-code/OIDC bootstrap server, no dependents
     "websearch",  # Leaf: AgentCore gateway, no dependents, may be cross-region
+    "connectors",  # Leaf: MCP connectors gateway + one stack per connector
     "codebuild",  # Leaf: build pipeline, may be cross-region
     "analytics",
     "quota",
@@ -148,6 +152,17 @@ class DestroyCommand(Command):
             if stack == "codebuild" and not getattr(profile, "enable_codebuild", False):
                 continue
             if stack == "websearch" and not getattr(profile, "web_search_enabled", False):
+                continue
+            if stack == "connectors":
+                if not (
+                    has_gateway_connectors(profile) or getattr(profile, "connectors_gateway", {}).get("gateway_url")
+                ):
+                    continue
+                if destroy_connectors(profile, console, self._delete_stack) != 0:
+                    stacks_with_failures.append(connectors_base_stack_name(profile))
+                else:
+                    config.save_profile(profile)  # drop gateway_url/portal_url/deployed
+                    console.print("[green]✓ Connectors stacks destroyed[/green]\n")
                 continue
 
             stack_name = profile.stack_names.get(stack, f"{profile.identity_pool_name}-{stack}")

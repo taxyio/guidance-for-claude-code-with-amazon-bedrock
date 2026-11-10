@@ -1,0 +1,3078 @@
+{
+ "tools": [
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Ask about a workflow result"
+   },
+   "description": "Answers a Zwischenfrage about the current result of a Workflow run. The answer is grounded on the run and saved under the run. The run does not advance.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "question": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "question"
+    ],
+    "additionalProperties": false
+   },
+   "name": "ask_about_workflow_result",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "step_ordinal": {
+      "type": "integer"
+     },
+     "question": {
+      "type": "string"
+     },
+     "answer": {
+      "type": "string"
+     },
+     "citations": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "index": {
+         "type": "integer"
+        },
+        "source_ref": {
+         "type": "string"
+        },
+        "deeplink": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "collection": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "category": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "title": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "publisher": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "locator": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "snippet": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "page": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "truncated": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "run_id",
+     "question",
+     "answer",
+     "citations",
+     "truncated"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Ask a tax or legal question"
+   },
+   "description": "Answers a German tax or legal question with citations from the licensed Taxy knowledge base. Without chat_id the call starts a new conversation. With the chat_id from a previous answer it continues that conversation. file_ids grounds the answer on documents uploaded with upload_document.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "question": {
+      "type": "string"
+     },
+     "chat_id": {
+      "type": "string"
+     },
+     "file_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "external_user_id": {
+      "type": "string",
+      "description": "Optional label for the caller's own end user (service keys only)."
+     }
+    },
+    "required": [
+     "question"
+    ],
+    "additionalProperties": false
+   },
+   "name": "ask_legal_question",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "chat_id": {
+      "type": "string"
+     },
+     "answer": {
+      "type": "string"
+     },
+     "citations": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "index": {
+         "type": "integer"
+        },
+        "source_ref": {
+         "type": "string"
+        },
+        "deeplink": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "collection": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "category": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "title": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "publisher": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "locator": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "snippet": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "page": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "truncated": {
+      "type": "boolean"
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "chat_id",
+     "answer",
+     "citations",
+     "truncated"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Assess the extended trade tax deduction"
+   },
+   "description": "Assesses whether a planned property sale keeps a company's erweiterte Gewerbesteuer-Kuerzung (Sec. 9 No. 1 Sentence 2 GewStG) intact. It works through the Drei-Objekt-Grenze / gewerblicher Grundstueckshandel checklist, grounded in German tax commentary and case law. It accepts either structured case data (`case`) or a standardized PDF (`pdf_base64`), not both. Returns a per-condition checklist, an overall assessment, any open follow-up questions, and the sources it cited.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "case": {
+      "type": "object"
+     },
+     "pdf_base64": {
+      "type": "string"
+     },
+     "case_id": {
+      "type": "string"
+     },
+     "include_memo": {
+      "type": "boolean"
+     }
+    },
+    "additionalProperties": false
+   },
+   "name": "assess_trade_tax_relief",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "case_id": {
+      "type": "string"
+     },
+     "gesamt_einschaetzung": {
+      "type": "string"
+     },
+     "zusammenfassung": {
+      "type": "string"
+     },
+     "checkliste": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "key": {
+         "type": "string"
+        },
+        "titel": {
+         "type": "string"
+        },
+        "scope": {
+         "type": "string"
+        },
+        "status": {
+         "type": "string"
+        },
+        "begruendung": {
+         "type": "string"
+        },
+        "rueckfrage": {
+         "type": "string"
+        },
+        "zitate": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        }
+       },
+       "required": [
+        "key",
+        "titel",
+        "scope",
+        "status",
+        "begruendung"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "rueckfragen": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "citations": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "index": {
+         "type": "integer"
+        },
+        "source_ref": {
+         "type": "string"
+        },
+        "deeplink": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "collection": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "category": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "title": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "publisher": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "locator": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "snippet": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "page": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "case": {
+      "type": "object"
+     },
+     "memo": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Create a project"
+   },
+   "description": "Creates a project for the caller. A project groups chats. The server adds the optional instruction to the system prompt of every chat in this project.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "instruction": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "additionalProperties": false
+   },
+   "name": "create_project",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "project": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Delete a chat"
+   },
+   "description": "Deletes one of the caller's own chats, with its messages and citations. The deletion is permanent.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "chat_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "chat_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "delete_chat",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Delete a project"
+   },
+   "description": "Deletes one of the caller's own projects. The chats in it are kept and become unfiled. The deletion is permanent.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "project_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "project_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "delete_project",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read the advisory feed"
+   },
+   "description": "Returns the caller's Beratungsanlässe. The Workspace generates these advisory topics from the caller's own activity. The rows are the same rows the web app shows on Home. A row can carry a next_step that names the tool call for its action. With refresh true, the feed is regenerated before the read. A refresh spends the advisory_feed quota.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "open",
+       "to_do",
+       "done",
+       "dismissed"
+      ],
+      "description": "Filters the rows by status. Without it, the result is the default view of the web app."
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "de",
+       "en",
+       "nl"
+      ],
+      "description": "de or nl. The language a refresh writes new rows in. It does not filter the rows. Without it, the caller's stored Workspace language applies."
+     },
+     "refresh": {
+      "type": "boolean",
+      "description": "true regenerates the feed before the read. A refresh spends the advisory_feed quota."
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "get_advisory_feed",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "recommendations": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "is_example": {
+      "type": "boolean"
+     },
+     "language": {
+      "type": "string"
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read a chat"
+   },
+   "description": "Returns one of the caller's own chats in full, including its transcript and citations.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "chat_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "chat_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "get_chat",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "chat": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "messages": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read a document"
+   },
+   "description": "Returns the whole document that one source chunk belongs to: its sibling chunks stitched in document order, up to a character budget. offset is a character position in the stitched text. A result carries next_offset, the offset where the next part starts. next_offset is null at the end of the document.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "source_id": {
+      "type": "string"
+     },
+     "offset": {
+      "type": "integer"
+     }
+    },
+    "required": [
+     "source_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "get_document",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "title": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "reference": {
+      "type": "string"
+     },
+     "deeplink": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "text": {
+      "type": "string"
+     },
+     "chunk_count": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "offset": {
+      "type": "integer"
+     },
+     "has_more": {
+      "type": "boolean"
+     },
+     "next_offset": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "single_chunk_fallback": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read personal instructions"
+   },
+   "description": "Returns the caller's standing chat instructions. The server adds this text to the system prompt of every chat.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   },
+   "name": "get_personal_instructions",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "personal_instructions": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read a document review"
+   },
+   "description": "Returns one of the caller's Tabellenblick reviews as a grid of documents by criteria. cursor selects the next page of documents. A review that is still running returns its current state.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "sheet_id": {
+      "type": "string"
+     },
+     "cursor": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "sheet_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "get_sheet",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "sheet_id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "draft",
+       "running",
+       "done",
+       "failed"
+      ]
+     },
+     "template": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "name": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false
+     },
+     "system_prompt": {
+      "type": "string"
+     },
+     "columns": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "ordinal": {
+         "type": "integer"
+        },
+        "header": {
+         "type": "string"
+        },
+        "answer_type": {
+         "type": "string"
+        },
+        "prompt": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ordinal",
+        "header",
+        "answer_type"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "documents": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "file_id": {
+         "type": "string"
+        },
+        "file_name": {
+         "type": "string"
+        },
+        "cells": {
+         "type": "array",
+         "items": {
+          "type": [
+           "object",
+           "null"
+          ],
+          "properties": {
+           "value": {
+            "type": [
+             "object",
+             "null"
+            ]
+           },
+           "status": {
+            "type": "string"
+           },
+           "review_state": {
+            "type": "string"
+           },
+           "truncated": {
+            "type": "boolean"
+           },
+           "error_code": {
+            "type": [
+             "string",
+             "null"
+            ]
+           },
+           "citations": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "id": {
+               "type": "string"
+              },
+              "snippet": {
+               "type": [
+                "string",
+                "null"
+               ]
+              },
+              "page": {
+               "type": [
+                "integer",
+                "null"
+               ]
+              },
+              "source_ref": {
+               "type": "string"
+              }
+             },
+             "additionalProperties": false
+            }
+           }
+          },
+          "additionalProperties": false
+         }
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "progress": {
+      "type": "object",
+      "properties": {
+       "cells_done": {
+        "type": "integer"
+       },
+       "cells_total": {
+        "type": "integer"
+       }
+      },
+      "additionalProperties": false
+     },
+     "next_cursor": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "summary": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read a source"
+   },
+   "description": "Returns one cited source chunk by its id: its full text, reference and deeplink, when the caller is licensed for it.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "source_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "source_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "get_source",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "reference": {
+      "type": "string"
+     },
+     "deeplink": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "collection": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "score": {
+      "type": "number"
+     },
+     "category": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "title": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "publisher": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "locator": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "snippet": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "page": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Read a workflow run"
+   },
+   "description": "Returns one of the user's Workflow runs: its status, the latest output of every step, its citations and its Zwischenfragen. This works for an active run and for a finished run.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "get_workflow_run",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "workflow": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "status": {
+      "type": "string"
+     },
+     "current_step": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "ordinal": {
+        "type": "integer"
+       },
+       "name": {
+        "type": "string"
+       },
+       "status": {
+        "type": "string"
+       },
+       "output": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "truncated": {
+        "type": "boolean"
+       },
+       "citations": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "index": {
+           "type": "integer"
+          },
+          "source_ref": {
+           "type": "string"
+          },
+          "deeplink": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "collection": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "category": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "title": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "publisher": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "locator": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "snippet": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "page": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "additionalProperties": false
+        }
+       },
+       "awaits_review": {
+        "type": "boolean"
+       },
+       "needs_document": {
+        "type": "boolean"
+       },
+       "error": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "steps": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "ordinal": {
+         "type": "integer"
+        },
+        "name": {
+         "type": "string"
+        },
+        "status": {
+         "type": "string"
+        },
+        "output_type": {
+         "type": "string"
+        },
+        "needs_document": {
+         "type": "boolean"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "final_output": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "run_id",
+     "status",
+     "steps"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List licensed publications"
+   },
+   "description": "Lists the caller's entitled knowledge-base collections and, for each, the licensed publications with their titles where resolvable.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   },
+   "name": "list_available_publications",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "collections": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "collection": {
+         "type": "string"
+        },
+        "publications": {
+         "oneOf": [
+          {
+           "type": "string",
+           "enum": [
+            "all"
+           ]
+          },
+          {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "id": {
+              "type": "string"
+             },
+             "title": {
+              "type": [
+               "string",
+               "null"
+              ]
+             }
+            },
+            "required": [
+             "id",
+             "title"
+            ],
+            "additionalProperties": false
+           }
+          }
+         ]
+        }
+       },
+       "required": [
+        "collection",
+        "publications"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List chats"
+   },
+   "description": "Lists the caller's own chats, most recently active first.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "limit": {
+      "type": "integer"
+     },
+     "offset": {
+      "type": "integer"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "list_chats",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "chats": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List projects"
+   },
+   "description": "Lists the caller's own projects. A project groups chats and can hold a standing instruction.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   },
+   "name": "list_projects",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "projects": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List document reviews"
+   },
+   "description": "Lists the caller's own Tabellenblick reviews, newest first. cursor selects the next page of older reviews.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "limit": {
+      "type": "integer"
+     },
+     "cursor": {
+      "type": "string"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "list_sheets",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "sheets": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "next_cursor": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List review templates"
+   },
+   "description": "Lists the Tabellenblick templates (Vorlagen) the caller can use. Each row names the template and the criteria it checks as column headers. search filters by name or description.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "search": {
+      "type": "string"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "list_tabular_templates",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "templates": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "name": {
+         "type": "string"
+        },
+        "description": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "category": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "is_system": {
+         "type": "boolean"
+        },
+        "column_count": {
+         "type": "integer"
+        },
+        "columns": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "ordinal": {
+            "type": "integer"
+           },
+           "header": {
+            "type": "string"
+           },
+           "answer_type": {
+            "type": "string"
+           }
+          },
+          "additionalProperties": false
+         }
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "truncated": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List workflow runs"
+   },
+   "description": "Lists the user's own Workflow runs, newest first. status filters by active, done or cancelled. limit bounds the list: default 20, at most 100.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "list_workflow_runs",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "runs": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "run_id": {
+         "type": "string"
+        },
+        "workflow": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "name": {
+           "type": [
+            "string",
+            "null"
+           ]
+          }
+         },
+         "additionalProperties": false
+        },
+        "status": {
+         "type": "string"
+        },
+        "step_count": {
+         "type": "integer"
+        },
+        "approved_step_count": {
+         "type": "integer"
+        },
+        "preview": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "created_at": {
+         "type": "string"
+        },
+        "updated_at": {
+         "type": "string"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "truncated": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "List workflows"
+   },
+   "description": "Lists the Workflows the user can run. search filters by name or description. area filters by category. The id of a row is the workflow_id that run_workflow accepts.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "search": {
+      "type": "string"
+     },
+     "area": {
+      "type": "string"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "name": "list_workflows",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "workflows": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "name": {
+         "type": "string"
+        },
+        "description": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "area": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "kind": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "tags": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "step_count": {
+         "type": "integer"
+        },
+        "needs_document": {
+         "type": "boolean"
+        },
+        "estimated_minutes": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "truncated": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Check the connection"
+   },
+   "description": "Health/entitlement probe — proves the auth, registry and metering pipeline end to end.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   },
+   "name": "ping"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Review documents against a template"
+   },
+   "description": "Reviews uploaded documents against a Tabellenblick template (Vorlage). Accepts a template_id from list_tabular_templates and file_ids from upload_document. The server creates the review, runs it and returns the grid of documents by criteria. One call uses one Tabellenblick Vorgang.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "template_id": {
+      "type": "string"
+     },
+     "file_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1
+     },
+     "name": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "template_id",
+     "file_ids"
+    ],
+    "additionalProperties": false
+   },
+   "name": "review_documents",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "sheet_id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "draft",
+       "running",
+       "done",
+       "failed"
+      ]
+     },
+     "template": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "name": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false
+     },
+     "system_prompt": {
+      "type": "string"
+     },
+     "columns": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "ordinal": {
+         "type": "integer"
+        },
+        "header": {
+         "type": "string"
+        },
+        "answer_type": {
+         "type": "string"
+        },
+        "prompt": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ordinal",
+        "header",
+        "answer_type"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "documents": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "file_id": {
+         "type": "string"
+        },
+        "file_name": {
+         "type": "string"
+        },
+        "cells": {
+         "type": "array",
+         "items": {
+          "type": [
+           "object",
+           "null"
+          ],
+          "properties": {
+           "value": {
+            "type": [
+             "object",
+             "null"
+            ]
+           },
+           "status": {
+            "type": "string"
+           },
+           "review_state": {
+            "type": "string"
+           },
+           "truncated": {
+            "type": "boolean"
+           },
+           "error_code": {
+            "type": [
+             "string",
+             "null"
+            ]
+           },
+           "citations": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "id": {
+               "type": "string"
+              },
+              "snippet": {
+               "type": [
+                "string",
+                "null"
+               ]
+              },
+              "page": {
+               "type": [
+                "integer",
+                "null"
+               ]
+              },
+              "source_ref": {
+               "type": "string"
+              }
+             },
+             "additionalProperties": false
+            }
+           }
+          },
+          "additionalProperties": false
+         }
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "progress": {
+      "type": "object",
+      "properties": {
+       "cells_done": {
+        "type": "integer"
+       },
+       "cells_total": {
+        "type": "integer"
+       }
+      },
+      "additionalProperties": false
+     },
+     "next_cursor": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "summary": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Approve or redo a workflow step"
+   },
+   "description": "Answers the review gate of a Workflow run. approve true accepts the current step and runs the next one. approve false with feedback runs the current step again. edited_output replaces the output text of the current step. file_ids from upload_document attach documents to the next step.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "approve": {
+      "type": "boolean"
+     },
+     "feedback": {
+      "type": "string"
+     },
+     "edited_output": {
+      "type": "string"
+     },
+     "file_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "required": [
+     "run_id",
+     "approve"
+    ],
+    "additionalProperties": false
+   },
+   "name": "review_workflow_step",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "workflow": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "status": {
+      "type": "string"
+     },
+     "current_step": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "ordinal": {
+        "type": "integer"
+       },
+       "name": {
+        "type": "string"
+       },
+       "status": {
+        "type": "string"
+       },
+       "output": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "truncated": {
+        "type": "boolean"
+       },
+       "citations": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "index": {
+           "type": "integer"
+          },
+          "source_ref": {
+           "type": "string"
+          },
+          "deeplink": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "collection": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "category": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "title": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "publisher": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "locator": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "snippet": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "page": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "additionalProperties": false
+        }
+       },
+       "awaits_review": {
+        "type": "boolean"
+       },
+       "needs_document": {
+        "type": "boolean"
+       },
+       "error": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "steps": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "ordinal": {
+         "type": "integer"
+        },
+        "name": {
+         "type": "string"
+        },
+        "status": {
+         "type": "string"
+        },
+        "output_type": {
+         "type": "string"
+        },
+        "needs_document": {
+         "type": "boolean"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "final_output": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "run_id",
+     "status",
+     "steps"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Start a workflow"
+   },
+   "description": "Starts a Workflow on the user's case text and runs its first step. Accepts a workflow_id from list_workflows and the case text as input_text. file_ids from upload_document ground the run on documents. Returns the run with a run_id. The run stops at a review gate after each step.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "workflow_id": {
+      "type": "string"
+     },
+     "input_text": {
+      "type": "string"
+     },
+     "file_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "required": [
+     "workflow_id",
+     "input_text"
+    ],
+    "additionalProperties": false
+   },
+   "name": "run_workflow",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "workflow": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "status": {
+      "type": "string"
+     },
+     "current_step": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "ordinal": {
+        "type": "integer"
+       },
+       "name": {
+        "type": "string"
+       },
+       "status": {
+        "type": "string"
+       },
+       "output": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "truncated": {
+        "type": "boolean"
+       },
+       "citations": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "index": {
+           "type": "integer"
+          },
+          "source_ref": {
+           "type": "string"
+          },
+          "deeplink": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "collection": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "category": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "title": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "publisher": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "locator": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "snippet": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "page": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "additionalProperties": false
+        }
+       },
+       "awaits_review": {
+        "type": "boolean"
+       },
+       "needs_document": {
+        "type": "boolean"
+       },
+       "error": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "additionalProperties": false
+     },
+     "steps": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "ordinal": {
+         "type": "integer"
+        },
+        "name": {
+         "type": "string"
+        },
+        "status": {
+         "type": "string"
+        },
+        "output_type": {
+         "type": "string"
+        },
+        "needs_document": {
+         "type": "boolean"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "final_output": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "run_id",
+     "status",
+     "steps"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Search legal sources"
+   },
+   "description": "Searches the caller's entitled German tax/legal knowledge base, and the caller's own uploaded documents. Returns full source chunks, not a generated answer. Each result carries the full chunk text, a reference, a deeplink, and a relevance score. A query that names a ruling by its Aktenzeichen or its ECLI returns that decision itself as the first result. An empty result means one thing only: the source is not in the publications this caller is licensed for. It is not evidence that the source does not exist, or that a citation is invented.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "query": {
+      "type": "string"
+     },
+     "top_k": {
+      "type": "integer"
+     }
+    },
+    "required": [
+     "query"
+    ],
+    "additionalProperties": false
+   },
+   "name": "search_legal_sources",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "results": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "text": {
+         "type": "string"
+        },
+        "reference": {
+         "type": "string"
+        },
+        "deeplink": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "collection": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "score": {
+         "type": "number"
+        },
+        "category": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "title": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "publisher": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "locator": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "snippet": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "page": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Rate an answer"
+   },
+   "description": "Records the rating a person gave for one assistant message: up or down. The rating is the person's own verdict on the answer. It is stored with the same evaluation data as the thumbs rating in the Workspace web app.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "message_id": {
+      "type": "string"
+     },
+     "rating": {
+      "type": "string",
+      "enum": [
+       "up",
+       "down"
+      ]
+     },
+     "comment": {
+      "type": "string"
+     },
+     "reason": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "message_id",
+     "rating"
+    ],
+    "additionalProperties": false
+   },
+   "name": "set_message_feedback",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Set personal instructions"
+   },
+   "description": "Replaces the caller's standing chat instructions. The server adds this text to the system prompt of every future chat. This includes the chats the person starts in the Workspace web app. An empty string clears the instructions.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "instructions": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "instructions"
+    ],
+    "additionalProperties": false
+   },
+   "name": "set_personal_instructions",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "personal_instructions": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Change a chat"
+   },
+   "description": "Changes one of the caller's own chats. title renames it. folder_id moves it into a project, and folder_id null removes it from its project. archived archives it. A field left out stays unchanged.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "chat_id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "folder_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "archived": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "chat_id"
+    ],
+    "additionalProperties": false
+   },
+   "name": "update_chat",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "chat": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false,
+    "title": "Upload a document"
+   },
+   "description": "Uploads a document into the caller's Workspace. Accepted file types: .docx, .pdf, .pptx, .txt. The document is parsed and indexed before the call returns. Returns a file_id that ask_legal_question, run_workflow and review_documents accept in file_ids.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "filename": {
+      "type": "string"
+     },
+     "content_base64": {
+      "type": "string"
+     },
+     "mime_type": {
+      "type": "string",
+      "description": "Optional and advisory. The server reads the type from the filename extension and ignores this value."
+     }
+    },
+    "required": [
+     "filename",
+     "content_base64"
+    ],
+    "additionalProperties": false
+   },
+   "name": "upload_document",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "file_id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "parse_status": {
+      "type": "string"
+     },
+     "page_count": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "next_step": {
+      "type": "string"
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "file_id",
+     "name",
+     "parse_status",
+     "page_count"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false,
+    "readOnlyHint": true,
+    "title": "Show the signed-in account"
+   },
+   "description": "Returns what this server is, the account the caller is signed in as, the tools the caller can call, and which of them count against the monthly allowance.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   },
+   "name": "whoami",
+   "outputSchema": {
+    "type": "object",
+    "properties": {
+     "summary": {
+      "type": "string"
+     },
+     "server": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "you": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "tools": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": true
+      }
+     },
+     "fair_use": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "error": {
+      "type": "object",
+      "properties": {
+       "code": {
+        "type": "string"
+       },
+       "message": {
+        "type": "string"
+       },
+       "details": {}
+      },
+      "required": [
+       "code",
+       "message"
+      ],
+      "additionalProperties": false
+     }
+    },
+    "required": [
+     "summary",
+     "server",
+     "you",
+     "tools",
+     "fair_use"
+    ],
+    "additionalProperties": false
+   }
+  }
+ ]
+}

@@ -28,6 +28,7 @@ from claude_code_with_bedrock.cli.utils.coexistence import (
     STRIP_SCRIPT_PY,
     claude_dir_name,
     coexistence_enabled,
+    encode_powershell,
 )
 from claude_code_with_bedrock.cli.validators import validate_profile_for_packaging
 from claude_code_with_bedrock.config import Config, Profile
@@ -354,7 +355,8 @@ class TestWindowsInstaller:
     def test_default_install_untouched(self, tmp_path):
         content = _bat_installer(_profile(coexist=False), tmp_path)
         assert ".claude-bedrock" not in content
-        assert "-EncodedCommand" not in content
+        # The strip script must not run (other encoded blocks, e.g. MCP connectors, may).
+        assert encode_powershell(STRIP_SCRIPT_PS1) not in content
 
     def test_settings_target_bedrock_dir(self, tmp_path):
         content = _bat_installer(_profile(), tmp_path)

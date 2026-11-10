@@ -24,6 +24,10 @@ from claude_code_with_bedrock.cli.utils.cf_exceptions import (
     StackRollbackError,
 )
 from claude_code_with_bedrock.cli.utils.cloudformation import CloudFormationManager
+from claude_code_with_bedrock.cli.utils.connectors import has_gateway_connectors
+from claude_code_with_bedrock.cli.utils.connectors_deploy import base_stack_name as connectors_base_stack_name
+from claude_code_with_bedrock.cli.utils.connectors_deploy import deploy_connectors
+from claude_code_with_bedrock.cli.utils.connectors_deploy import gateway_region as connectors_gateway_region
 from claude_code_with_bedrock.cli.utils.helpers import (
     CODEBUILD_WINDOWS_REGIONS,
     find_nearest_codebuild_region,
@@ -44,6 +48,7 @@ VALID_STACKS = [
     "distribution",
     "codebuild",
     "websearch",
+    "connectors",
     "bootstrap",
 ]
 
@@ -514,6 +519,14 @@ class DeployCommand(Command):
                     console.print(f"[yellow]{msg}[/yellow]")
                     return 1
                 stacks_to_deploy.append(("websearch", "AgentCore Gateway + Web Search connector"))
+            elif stack_arg == "connectors":
+                if not has_gateway_connectors(profile):
+                    console.print(
+                        '[yellow]No gateway connectors configured (connectors with "via": "gateway").[/yellow]'
+                    )
+                    console.print("[dim]See assets/docs/CONNECTORS.md.[/dim]")
+                    return 1
+                stacks_to_deploy.append(("connectors", "AgentCore Gateway for MCP connectors"))
             else:
                 console.print(f"[red]Unknown stack: {stack_arg}[/red]")
                 console.print(f"Valid stacks: {', '.join(VALID_STACKS)}\n")
@@ -533,6 +546,10 @@ class DeployCommand(Command):
                     stacks_to_deploy.append(("websearch", "AgentCore Gateway + Web Search connector"))
                 else:
                     console.print(f"[yellow]⚠ Skipping web search gateway: {msg}[/yellow]")
+
+            # MCP connectors gateway — optional, only needs the IdP from auth.
+            if has_gateway_connectors(profile):
+                stacks_to_deploy.append(("connectors", "AgentCore Gateway for MCP connectors"))
 
             # Check if bootstrap server is enabled (any dynamic mode)
             cowork_mode = getattr(profile, "cowork_config_delivery", "static")
@@ -563,6 +580,10 @@ class DeployCommand(Command):
                 ws_region = get_websearch_region(profile)
                 if ws_region != profile.aws_region:
                     status_manager = CloudFormationManager(region=ws_region)
+            elif stack_type == "connectors":
+                stack_name = connectors_base_stack_name(profile)
+                if connectors_gateway_region(profile) != profile.aws_region:
+                    status_manager = CloudFormationManager(region=connectors_gateway_region(profile))
             status = status_manager.get_stack_status(stack_name)
             if status and status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
                 status_display = "[green]Update[/green]"
@@ -627,6 +648,12 @@ class DeployCommand(Command):
 
             result = self._deploy_stack(stack_type, profile, console, cf_manager)
             if result != 0:
+                if stack_type == "connectors":
+                    console.print(
+                        "[yellow]⚠ Connectors gateway deploy failed — optional, does not block the rest.[/yellow]\n"
+                        "[dim]  Re-run 'ccwb deploy connectors' to retry.[/dim]\n"
+                    )
+                    continue
                 if stack_type == "websearch":
                     # Web search is an optional add-on. A failure here must not mark
                     # the whole platform deploy as failed or abort stacks that follow;
@@ -1586,6 +1613,15 @@ class DeployCommand(Command):
                                 "ccwb destroy websearch to tear down.[/yellow]"
                             )
                 return result
+
+            elif stack_type == "connectors":
+                progress.stop()
+
+                def _save(p):
+                    cfg = Config.load()
+                    cfg.save_profile(p)
+
+                return deploy_connectors(profile, console, project_root, save_profile=_save)
 
             else:
                 console.print(f"[red]Unknown stack type: {stack_type}[/red]")
